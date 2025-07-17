@@ -12,27 +12,21 @@ import { ConfigModule } from '@nestjs/config';
 @Module({
   imports: [
     ConfigModule.forRoot({
-      isGlobal: true
+      isGlobal: true,
     }),
     TypeOrmModule.forRoot({
       type: 'postgres',
-      host: 'dpg-d1rg0t7diees73bt6jk0-a.oregon-postgres.render.com',          // Cambia por el host de tu DB postgresql://dbsaman_user:sr33ikCa3ACMwyP59ATCKw6LboXNvqGW@dpg-d1rg0t7diees73bt6jk0-a.oregon-postgres.render.com/dbsaman
-      port: 5432,
-      username: 'dbsaman_user',
-      password: 'sr33ikCa3ACMwyP59ATCKw6LboXNvqGW',
-      database: 'dbsaman',
+      host: process.env.DB_HOST,
+      port: parseInt(process.env.DB_PORT) || 5432,
+      username: process.env.DB_USERNAME,
+      password: process.env.DB_PASSWORD,
+      database: process.env.DB_NAME,
       ssl: {
         rejectUnauthorized: false, // Para evitar problemas con certificados SSL en producción
       },
-      entities: [
-        Usuario,
-        Producto,
-        Bodega,
-        UnidadMedida,
-        Movimiento,
-      ],
-      synchronize: true, // ⚠️ solo para desarrollo
-      logging: true
+      entities: [Usuario, Producto, Bodega, UnidadMedida, Movimiento],
+      synchronize: process.env.NODE_ENV === 'development', // ⚠️ solo para desarrollo
+      logging: process.env.NODE_ENV === 'development',
     }),
     TypeOrmModule.forFeature([
       Usuario,
