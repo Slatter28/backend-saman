@@ -1,5 +1,5 @@
-import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
-import { Movimiento } from "./movimiento.entity";
+import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
+import { Movimiento } from './movimiento.entity';
 
 @Entity('bodegas')
 export class Bodega {
@@ -12,6 +12,6 @@ export class Bodega {
   @Column({ nullable: true })
   ubicacion: string;
 
-  @OneToMany(() => Movimiento, m => m.bodega)
+  @OneToMany(() => Movimiento, (m) => m.bodega)
   movimientos: Movimiento[];
 }

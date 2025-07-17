@@ -7,7 +7,14 @@ import { Producto } from './entities/producto.entity';
 import { Bodega } from './entities/bodega.entity';
 import { UnidadMedida } from './entities/unidad-medida.entity';
 import { Movimiento } from './entities/movimiento.entity';
+import { Cliente } from './entities/cliente.entity';
 import { ConfigModule } from '@nestjs/config';
+import { AuthModule } from './auth/auth.module';
+import { ProductosModule } from './productos/productos.module';
+import { UnidadesMedidaModule } from './unidades-medida/unidades-medida.module';
+import { BodegasModule } from './bodegas/bodegas.module';
+import { ClientesModule } from './clientes/clientes.module';
+import { MovimientosModule } from './movimientos/movimientos.module';
 
 @Module({
   imports: [
@@ -24,7 +31,7 @@ import { ConfigModule } from '@nestjs/config';
       ssl: {
         rejectUnauthorized: false, // Para evitar problemas con certificados SSL en producción
       },
-      entities: [Usuario, Producto, Bodega, UnidadMedida, Movimiento],
+      entities: [Usuario, Producto, Bodega, UnidadMedida, Movimiento, Cliente],
       synchronize: process.env.NODE_ENV === 'development', // ⚠️ solo para desarrollo
       logging: process.env.NODE_ENV === 'development',
     }),
@@ -34,7 +41,14 @@ import { ConfigModule } from '@nestjs/config';
       Bodega,
       UnidadMedida,
       Movimiento,
+      Cliente,
     ]),
+    AuthModule,
+    ProductosModule,
+    UnidadesMedidaModule,
+    BodegasModule,
+    ClientesModule,
+    MovimientosModule,
   ],
   controllers: [AppController],
   providers: [AppService],
