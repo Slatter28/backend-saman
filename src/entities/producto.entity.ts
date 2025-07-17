@@ -1,6 +1,14 @@
-import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
-import { Movimiento } from "./movimiento.entity";
-import { UnidadMedida } from "./unidad-medida.entity";
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  OneToMany,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
+import { Movimiento } from './movimiento.entity';
+import { UnidadMedida } from './unidad-medida.entity';
 
 @Entity('productos')
 export class Producto {
@@ -13,13 +21,13 @@ export class Producto {
   @Column()
   descripcion: string;
 
-  @ManyToOne(() => UnidadMedida, u => u.productos)
+  @ManyToOne(() => UnidadMedida, (u) => u.productos)
   @JoinColumn({ name: 'unidad_medida_id' })
   unidadMedida: UnidadMedida;
 
   @CreateDateColumn()
   creadoEn: Date;
 
-  @OneToMany(() => Movimiento, m => m.producto)
+  @OneToMany(() => Movimiento, (m) => m.producto)
   movimientos: Movimiento[];
 }
