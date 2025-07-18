@@ -131,6 +131,13 @@ export class AuthController {
     };
   }
 
+  @Post('create-test-user')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Crear usuario de prueba (temporal)' })
+  async createTestUser() {
+    return this.authService.createTestUser();
+  }
+
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   @Get('admin-only')

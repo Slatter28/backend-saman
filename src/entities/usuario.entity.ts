@@ -8,7 +8,7 @@ import {
   BeforeUpdate,
 } from 'typeorm';
 import { Movimiento } from './movimiento.entity';
-import * as bcrypt from 'bcrypt';
+import * as bcryptjs from 'bcryptjs';
 
 @Entity('usuarios')
 export class Usuario {
@@ -38,11 +38,11 @@ export class Usuario {
   async hashPassword() {
     if (this.contrasena) {
       const saltRounds = 10;
-      this.contrasena = await bcrypt.hash(this.contrasena, saltRounds);
+      this.contrasena = await bcryptjs.hash(this.contrasena, saltRounds);
     }
   }
 
   async validatePassword(password: string): Promise<boolean> {
-    return bcrypt.compare(password, this.contrasena);
+    return bcryptjs.compare(password, this.contrasena);
   }
 }
