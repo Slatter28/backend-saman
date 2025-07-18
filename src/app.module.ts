@@ -15,6 +15,7 @@ import { UnidadesMedidaModule } from './unidades-medida/unidades-medida.module';
 import { BodegasModule } from './bodegas/bodegas.module';
 import { ClientesModule } from './clientes/clientes.module';
 import { MovimientosModule } from './movimientos/movimientos.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { MovimientosModule } from './movimientos/movimientos.module';
     BodegasModule,
     ClientesModule,
     MovimientosModule,
+    DashboardModule,
   ],
   controllers: [AppController],
   providers: [AppService],
