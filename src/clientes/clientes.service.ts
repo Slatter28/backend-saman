@@ -162,8 +162,6 @@ export class ClientesService {
         id: mov.id,
         tipo: mov.tipo,
         cantidad: mov.cantidad,
-        precio_unitario: mov.precio_unitario,
-        precio_total: mov.precio_total,
         fecha: mov.fecha,
         observacion: mov.observacion,
         producto: {

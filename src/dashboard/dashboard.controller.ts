@@ -26,9 +26,10 @@ export class DashboardController {
 
   @Get('estadisticas')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Obtener estadísticas generales del sistema',
-    description: 'Retorna el total de productos, clientes, bodegas y movimientos del día y mes actual'
+    description:
+      'Retorna el total de productos, clientes, bodegas y movimientos del día y mes actual',
   })
   @ApiResponse({
     status: 200,
@@ -50,9 +51,10 @@ export class DashboardController {
 
   @Get('movimientos-recientes')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Obtener movimientos recientes',
-    description: 'Retorna los últimos movimientos con información de producto, bodega, cliente y usuario'
+    description:
+      'Retorna los últimos movimientos con información de producto, bodega, cliente y usuario',
   })
   @ApiQuery({
     name: 'limit',
@@ -72,21 +74,21 @@ export class DashboardController {
           fecha: '2024-01-15T10:30:00.000Z',
           producto: {
             id: 1,
-            descripcion: 'Laptop HP'
+            descripcion: 'Laptop HP',
           },
           bodega: {
             id: 1,
-            nombre: 'Bodega Central'
+            nombre: 'Bodega Central',
           },
           cliente: {
             id: 1,
-            nombre: 'Empresa ABC'
+            nombre: 'Empresa ABC',
           },
           usuario: {
             id: 1,
-            nombre: 'Juan Pérez'
-          }
-        }
+            nombre: 'Juan Pérez',
+          },
+        },
       ],
     },
   })
@@ -98,9 +100,10 @@ export class DashboardController {
 
   @Get('productos-stock-bajo')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Obtener productos con stock bajo',
-    description: 'Retorna productos cuyo stock actual está por debajo del límite especificado'
+    description:
+      'Retorna productos cuyo stock actual está por debajo del límite especificado',
   })
   @ApiQuery({
     name: 'limite',
@@ -118,15 +121,15 @@ export class DashboardController {
           codigo: 'PROD001',
           descripcion: 'Laptop HP',
           stock_actual: 3,
-          precio_promedio: 1500.00
+          precio_promedio: 1500.0,
         },
         {
           id: 2,
-          codigo: 'PROD002', 
+          codigo: 'PROD002',
           descripcion: 'Mouse Logitech',
           stock_actual: 2,
-          precio_promedio: 25.50
-        }
+          precio_promedio: 25.5,
+        },
       ],
     },
   })
@@ -138,9 +141,10 @@ export class DashboardController {
 
   @Get('graficos')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Obtener datos para gráficos del dashboard',
-    description: 'Retorna datos agregados para generar gráficos: movimientos por día, entradas vs salidas, top productos y movimientos por bodega'
+    description:
+      'Retorna datos agregados para generar gráficos: movimientos por día, entradas vs salidas, top productos y movimientos por bodega',
   })
   @ApiResponse({
     status: 200,
@@ -149,18 +153,27 @@ export class DashboardController {
       example: {
         movimientosPorDia: [
           { fecha: '2024-01-15', cantidad: 12 },
-          { fecha: '2024-01-16', cantidad: 8 }
+          { fecha: '2024-01-16', cantidad: 8 },
         ],
         entradasVsSalidas: [
           { fecha: '2024-01-15', tipo: 'entrada', cantidad: 7 },
-          { fecha: '2024-01-15', tipo: 'salida', cantidad: 5 }
+          { fecha: '2024-01-15', tipo: 'salida', cantidad: 5 },
         ],
         topProductosMasMovidos: [
-          { descripcion: 'Laptop HP', total_movimientos: 45, cantidad_total: 150 }
+          {
+            descripcion: 'Laptop HP',
+            total_movimientos: 45,
+            cantidad_total: 150,
+          },
         ],
         movimientosPorBodega: [
-          { nombre: 'Bodega Central', total_movimientos: 120, entradas: 80, salidas: 40 }
-        ]
+          {
+            nombre: 'Bodega Central',
+            total_movimientos: 120,
+            entradas: 80,
+            salidas: 40,
+          },
+        ],
       },
     },
   })
@@ -171,9 +184,10 @@ export class DashboardController {
 
   @Get('inventario-resumen')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Obtener resumen de inventario por bodega',
-    description: 'Retorna un resumen del inventario actual agrupado por bodega con productos y cantidades'
+    description:
+      'Retorna un resumen del inventario actual agrupado por bodega con productos y cantidades',
   })
   @ApiResponse({
     status: 200,
@@ -189,10 +203,10 @@ export class DashboardController {
             {
               producto_id: 1,
               producto_descripcion: 'Laptop HP',
-              stock_actual: 15
-            }
-          ]
-        }
+              stock_actual: 15,
+            },
+          ],
+        },
       ],
     },
   })

@@ -6,7 +6,6 @@ import {
   IsString,
   MaxLength,
 } from 'class-validator';
-import { Transform } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateEntradaDto {
@@ -45,16 +44,6 @@ export class CreateEntradaDto {
   @IsNumber()
   @IsPositive()
   clienteId?: number;
-
-  @ApiPropertyOptional({
-    description: 'Precio unitario del producto',
-    example: 100.5,
-  })
-  @IsOptional()
-  @IsNumber()
-  @IsPositive()
-  @Transform(({ value }) => parseFloat(value))
-  precio_unitario?: number;
 
   @ApiPropertyOptional({
     description: 'Observaciones sobre el movimiento',
