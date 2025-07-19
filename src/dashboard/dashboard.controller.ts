@@ -15,7 +15,7 @@ import {
 } from '@nestjs/swagger';
 import { DashboardService } from './dashboard.service';
 import { JwtAuthGuard } from '../auth/guards';
-import { MovimientosRecientesDto, ProductosStockBajoDto } from './dto';
+import { MovimientosRecientesDto } from './dto';
 
 @ApiTags('dashboard')
 @Controller('dashboard')
