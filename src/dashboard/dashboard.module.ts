@@ -8,14 +8,7 @@ import { Bodega } from '../entities/bodega.entity';
 import { Movimiento } from '../entities/movimiento.entity';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([
-      Producto,
-      Cliente, 
-      Bodega,
-      Movimiento,
-    ]),
-  ],
+  imports: [TypeOrmModule.forFeature([Producto, Cliente, Bodega, Movimiento])],
   controllers: [DashboardController],
   providers: [DashboardService],
   exports: [DashboardService],

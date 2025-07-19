@@ -36,14 +36,8 @@ export class MovimientosService {
     createEntradaDto: CreateEntradaDto,
     userId: number,
   ): Promise<Movimiento> {
-    const {
-      productoId,
-      bodegaId,
-      clienteId,
-      cantidad,
-      precio_unitario,
-      observacion,
-    } = createEntradaDto;
+    const { productoId, bodegaId, clienteId, cantidad, observacion } =
+      createEntradaDto;
 
     // Validar que el producto existe
     const producto = await this.productoRepository.findOne({
@@ -90,14 +84,9 @@ export class MovimientosService {
       }
     }
 
-    // Calcular precio total
-    const precio_total = precio_unitario ? cantidad * precio_unitario : null;
-
     const movimiento = this.movimientoRepository.create({
       tipo: 'entrada',
       cantidad,
-      precio_unitario,
-      precio_total,
       observacion,
       producto,
       bodega,
@@ -112,14 +101,8 @@ export class MovimientosService {
     createSalidaDto: CreateSalidaDto,
     userId: number,
   ): Promise<Movimiento> {
-    const {
-      productoId,
-      bodegaId,
-      clienteId,
-      cantidad,
-      precio_unitario,
-      observacion,
-    } = createSalidaDto;
+    const { productoId, bodegaId, clienteId, cantidad, observacion } =
+      createSalidaDto;
 
     // Validar que el producto existe
     const producto = await this.productoRepository.findOne({
@@ -177,14 +160,9 @@ export class MovimientosService {
       }
     }
 
-    // Calcular precio total
-    const precio_total = precio_unitario ? cantidad * precio_unitario : null;
-
     const movimiento = this.movimientoRepository.create({
       tipo: 'salida',
       cantidad,
-      precio_unitario,
-      precio_total,
       observacion,
       producto,
       bodega,
@@ -372,8 +350,6 @@ export class MovimientosService {
         fecha: mov.fecha,
         tipo: mov.tipo,
         cantidad: mov.cantidad,
-        precio_unitario: mov.precio_unitario,
-        precio_total: mov.precio_total,
         saldo: saldoAcumulado,
         observacion: mov.observacion,
         bodega: {
@@ -431,7 +407,7 @@ export class MovimientosService {
     updateMovimientoDto: UpdateMovimientoDto,
   ): Promise<Movimiento> {
     const movimiento = await this.findOne(id);
-    const { cantidad, precio_unitario, observacion } = updateMovimientoDto;
+    const { cantidad, observacion } = updateMovimientoDto;
 
     // Si se actualiza la cantidad en una salida, validar stock
     if (
@@ -454,18 +430,7 @@ export class MovimientosService {
     }
 
     if (cantidad) movimiento.cantidad = cantidad;
-    if (precio_unitario !== undefined)
-      movimiento.precio_unitario = precio_unitario;
     if (observacion !== undefined) movimiento.observacion = observacion;
-
-    // Recalcular precio total si se cambió cantidad o precio unitario
-    if (
-      (cantidad || precio_unitario !== undefined) &&
-      movimiento.precio_unitario
-    ) {
-      movimiento.precio_total =
-        movimiento.cantidad * movimiento.precio_unitario;
-    }
 
     return this.movimientoRepository.save(movimiento);
   }

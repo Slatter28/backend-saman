@@ -39,7 +39,10 @@ export class DashboardService {
       this.bodegaRepository.count(),
       this.movimientoRepository
         .createQueryBuilder('movimiento')
-        .where('movimiento.fecha >= :hoy AND movimiento.fecha < :manana', { hoy, manana })
+        .where('movimiento.fecha >= :hoy AND movimiento.fecha < :manana', {
+          hoy,
+          manana,
+        })
         .getCount(),
       this.movimientoRepository
         .createQueryBuilder('movimiento')
@@ -130,18 +133,18 @@ export class DashboardService {
     // Versión simplificada con datos mock para demostración
     const movimientosPorDia = [];
     const entradasVsSalidas = [];
-    
+
     // Generar datos mock para los últimos 7 días
     for (let i = 6; i >= 0; i--) {
       const fecha = new Date();
       fecha.setDate(fecha.getDate() - i);
       const fechaStr = fecha.toISOString().split('T')[0];
-      
+
       movimientosPorDia.push({
         fecha: fechaStr,
         cantidad: Math.floor(Math.random() * 20) + 1,
       });
-      
+
       entradasVsSalidas.push(
         {
           fecha: fechaStr,
@@ -152,7 +155,7 @@ export class DashboardService {
           fecha: fechaStr,
           tipo: 'salida',
           cantidad: Math.floor(Math.random() * 8) + 1,
-        }
+        },
       );
     }
 

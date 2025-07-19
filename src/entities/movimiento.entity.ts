@@ -40,12 +40,6 @@ export class Movimiento {
   @JoinColumn({ name: 'cliente_id' })
   cliente: Cliente;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
-  precio_unitario: number;
-
-  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
-  precio_total: number;
-
   @Column({ nullable: true })
   observacion: string;
 }

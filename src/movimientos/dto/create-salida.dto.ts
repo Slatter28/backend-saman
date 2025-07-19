@@ -6,7 +6,6 @@ import {
   IsString,
   MaxLength,
 } from 'class-validator';
-import { Transform } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateSalidaDto {
@@ -45,16 +44,6 @@ export class CreateSalidaDto {
   @IsNumber()
   @IsPositive()
   clienteId?: number;
-
-  @ApiPropertyOptional({
-    description: 'Precio unitario de venta',
-    example: 150.75,
-  })
-  @IsOptional()
-  @IsNumber()
-  @IsPositive()
-  @Transform(({ value }) => parseFloat(value))
-  precio_unitario?: number;
 
   @ApiPropertyOptional({
     description: 'Observaciones sobre la salida',
