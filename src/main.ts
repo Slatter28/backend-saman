@@ -14,7 +14,7 @@ async function bootstrap() {
     origin: [
       'http://localhost:4200',
       'http://localhost:3000',
-      'http://localhost:60940',
+      'https://elsaman.netlify.app',
     ],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
