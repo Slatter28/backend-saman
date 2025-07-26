@@ -101,7 +101,7 @@ export class AuthController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Post('validate')
+  @Get('validate')
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Validar token JWT' })

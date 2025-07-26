@@ -10,13 +10,17 @@ import {
   UseGuards,
   Request,
   ParseIntPipe,
+  Res,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { MovimientosService } from './movimientos.service';
 import {
   CreateEntradaDto,
   CreateSalidaDto,
   UpdateMovimientoDto,
   QueryMovimientoDto,
+  ExcelQueryDto,
+  InventarioExcelQueryDto,
 } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -73,8 +77,84 @@ export class MovimientosController {
     return this.movimientosService.createSalida(createSalidaDto, req.user.sub);
   }
 
+  @Get('excel')
+  @Roles('admin', 'bodeguero')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Descargar reporte de movimientos en Excel' })
+  @ApiResponse({
+    status: 200,
+    description: 'Archivo Excel generado exitosamente',
+    headers: {
+      'Content-Type': {
+        description:
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      },
+      'Content-Disposition': {
+        description: 'attachment; filename="movimientos.xlsx"',
+      },
+    },
+  })
+  @ApiResponse({ status: 403, description: 'Sin permisos' })
+  async downloadExcel(
+    @Query() queryDto: ExcelQueryDto,
+    @Res() res: Response,
+  ) {
+    const buffer = await this.movimientosService.generateExcelReport(queryDto);
+
+    const fileName = `movimientos_${new Date().toISOString().split('T')[0]}.xlsx`;
+
+    res.set({
+      'Content-Type':
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Disposition': `attachment; filename="${fileName}"`,
+      'Content-Length': buffer.length,
+    });
+
+    res.send(buffer);
+  }
+
+  @Get('inventario-excel')
+  @Roles('admin', 'bodeguero')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Descargar reporte de inventario consolidado en Excel' })
+  @ApiResponse({
+    status: 200,
+    description: 'Archivo Excel de inventario generado exitosamente',
+    headers: {
+      'Content-Type': {
+        description:
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      },
+      'Content-Disposition': {
+        description: 'attachment; filename="inventario.xlsx"',
+      },
+    },
+  })
+  @ApiResponse({ status: 403, description: 'Sin permisos' })
+  async downloadInventarioExcel(
+    @Query() queryDto: InventarioExcelQueryDto,
+    @Res() res: Response,
+  ) {
+    const buffer = await this.movimientosService.generateInventarioExcelReport(queryDto);
+
+    const fileName = `inventario_${new Date().toISOString().split('T')[0]}.xlsx`;
+
+    res.set({
+      'Content-Type':
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Disposition': `attachment; filename="${fileName}"`,
+      'Content-Length': buffer.length,
+    });
+
+    res.send(buffer);
+  }
+
   @Get()
   @Roles('admin', 'bodeguero')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Obtener todos los movimientos con filtros' })
   @ApiResponse({
     status: 200,
@@ -104,18 +184,39 @@ export class MovimientosController {
 
   @Get('inventario')
   @Roles('admin', 'bodeguero')
-  @ApiOperation({ summary: 'Obtener resumen general del inventario' })
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Obtener resumen general del inventario con filtros',
+  })
   @ApiResponse({
     status: 200,
     description: 'Inventario general obtenido exitosamente',
   })
   @ApiResponse({ status: 403, description: 'Sin permisos' })
-  async getInventarioGeneral() {
-    return this.movimientosService.getInventarioGeneral();
+  async getInventarioGeneral(
+    @Query('bodegaId') bodegaId?: string,
+    @Query('productoId') productoId?: string,
+    @Query('stockMinimo') stockMinimo?: string,
+    @Query('soloStockBajo') soloStockBajo?: string,
+    @Query('incluirCeros') incluirCeros?: string,
+  ) {
+    // Convertir y validar parámetros
+    const filtros = {
+      bodegaId: bodegaId ? parseInt(bodegaId) : undefined,
+      productoId: productoId ? parseInt(productoId) : undefined,
+      stockMinimo: stockMinimo ? parseFloat(stockMinimo) : undefined,
+      soloStockBajo: soloStockBajo === 'true',
+      incluirCeros: incluirCeros === 'true',
+    };
+
+    return this.movimientosService.getInventarioGeneral(filtros);
   }
 
   @Get('kardex/:productId')
   @Roles('admin', 'bodeguero')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
   @ApiOperation({
     summary: 'Obtener kardex (historial completo) de un producto',
   })
@@ -132,6 +233,8 @@ export class MovimientosController {
 
   @Get(':id')
   @Roles('admin', 'bodeguero')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Obtener un movimiento por ID' })
   @ApiParam({ name: 'id', description: 'ID del movimiento', example: 1 })
   @ApiResponse({ status: 200, description: 'Movimiento obtenido exitosamente' })

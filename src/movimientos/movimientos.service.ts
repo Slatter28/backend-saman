@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
+import * as XLSX from 'xlsx';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Movimiento } from '../entities/movimiento.entity';
@@ -15,6 +16,8 @@ import {
   CreateSalidaDto,
   UpdateMovimientoDto,
   QueryMovimientoDto,
+  ExcelQueryDto,
+  InventarioExcelQueryDto,
 } from './dto';
 
 @Injectable()
@@ -276,8 +279,14 @@ export class MovimientosService {
     };
   }
 
-  async getInventarioGeneral() {
-    const inventario = await this.movimientoRepository
+  async getInventarioGeneral(filtros?: {
+    bodegaId?: number;
+    productoId?: number;
+    stockMinimo?: number;
+    soloStockBajo?: boolean;
+    incluirCeros?: boolean;
+  }) {
+    let queryBuilder = this.movimientoRepository
       .createQueryBuilder('movimiento')
       .select([
         'producto.id as "productoId"',
@@ -286,20 +295,145 @@ export class MovimientosService {
         'unidadMedida.nombre as "unidadMedida"',
         'bodega.id as "bodegaId"',
         'bodega.nombre as "bodegaNombre"',
+        'bodega.ubicacion as "bodegaUbicacion"',
         'SUM(CASE WHEN movimiento.tipo = \'entrada\' THEN movimiento.cantidad ELSE -movimiento.cantidad END) as "stock"',
+        'COUNT(movimiento.id) as "totalMovimientos"',
+        'MAX(movimiento.fecha) as "ultimoMovimiento"',
+        'SUM(CASE WHEN movimiento.tipo = \'entrada\' THEN movimiento.cantidad ELSE 0 END) as "totalEntradas"',
+        'SUM(CASE WHEN movimiento.tipo = \'salida\' THEN movimiento.cantidad ELSE 0 END) as "totalSalidas"',
       ])
       .leftJoin('movimiento.producto', 'producto')
       .leftJoin('producto.unidadMedida', 'unidadMedida')
       .leftJoin('movimiento.bodega', 'bodega')
       .groupBy(
-        'producto.id, producto.codigo, producto.descripcion, unidadMedida.nombre, bodega.id, bodega.nombre',
-      )
-      .having(
-        "SUM(CASE WHEN movimiento.tipo = 'entrada' THEN movimiento.cantidad ELSE -movimiento.cantidad END) > 0",
-      )
+        'producto.id, producto.codigo, producto.descripcion, unidadMedida.nombre, bodega.id, bodega.nombre, bodega.ubicacion',
+      );
+
+    // Aplicar filtros WHERE
+    if (filtros?.bodegaId) {
+      queryBuilder = queryBuilder.andWhere('bodega.id = :bodegaId', {
+        bodegaId: filtros.bodegaId,
+      });
+    }
+
+    if (filtros?.productoId) {
+      queryBuilder = queryBuilder.andWhere('producto.id = :productoId', {
+        productoId: filtros.productoId,
+      });
+    }
+
+    // ✅ CORREGIDO: Aplicar filtros HAVING correctamente
+    const stockCalculation =
+      "SUM(CASE WHEN movimiento.tipo = 'entrada' THEN movimiento.cantidad ELSE -movimiento.cantidad END)";
+
+    // Si no incluir ceros, aplicar filtro básico
+    if (!filtros?.incluirCeros) {
+      queryBuilder = queryBuilder.having(`${stockCalculation} > 0`);
+    }
+
+    // Si hay stock mínimo Y no es solo stock bajo
+    if (filtros?.stockMinimo && !filtros?.soloStockBajo) {
+      if (!filtros?.incluirCeros) {
+        // Ya hay un HAVING, usar andHaving
+        queryBuilder = queryBuilder.andHaving(
+          `${stockCalculation} >= :stockMinimo`,
+          {
+            stockMinimo: filtros.stockMinimo,
+          },
+        );
+      } else {
+        // Primer HAVING
+        queryBuilder = queryBuilder.having(
+          `${stockCalculation} >= :stockMinimo`,
+          {
+            stockMinimo: filtros.stockMinimo,
+          },
+        );
+      }
+    }
+
+    // Si es solo stock bajo
+    if (filtros?.soloStockBajo) {
+      if (!filtros?.incluirCeros || filtros?.stockMinimo) {
+        // Ya hay un HAVING, usar andHaving
+        queryBuilder = queryBuilder.andHaving(`${stockCalculation} <= 10`);
+      } else {
+        // Primer HAVING
+        queryBuilder = queryBuilder.having(`${stockCalculation} <= 10`);
+      }
+    }
+
+    queryBuilder = queryBuilder
       .orderBy('producto.codigo', 'ASC')
-      .addOrderBy('bodega.nombre', 'ASC')
-      .getRawMany();
+      .addOrderBy('bodega.nombre', 'ASC');
+
+    const inventario = await queryBuilder.getRawMany();
+
+    // Calcular estadísticas
+    const estadisticas = {
+      totalProductosDiferentes: new Set(
+        inventario.map((item) => item.productoId),
+      ).size,
+      totalBodegas: new Set(inventario.map((item) => item.bodegaId)).size,
+      stockTotalUnidades: inventario.reduce(
+        (sum, item) => sum + parseFloat(item.stock),
+        0,
+      ),
+      totalRegistros: inventario.length,
+      productosStockBajo: inventario.filter(
+        (item) => parseFloat(item.stock) <= 10,
+      ).length,
+      ultimaActualizacion: new Date().toISOString(),
+    };
+
+    // Resumen por bodega
+    const resumenPorBodega = inventario.reduce((acc, item) => {
+      const bodegaId = parseInt(item.bodegaId);
+      if (!acc[bodegaId]) {
+        acc[bodegaId] = {
+          bodega: {
+            id: bodegaId,
+            nombre: item.bodegaNombre,
+            ubicacion: item.bodegaUbicacion,
+          },
+          totalProductos: 0,
+          stockTotal: 0,
+        };
+      }
+      acc[bodegaId].totalProductos++;
+      acc[bodegaId].stockTotal += parseFloat(item.stock);
+      return acc;
+    }, {});
+
+    // Resumen por producto (stock total en todas las bodegas)
+    const resumenPorProducto = inventario.reduce((acc, item) => {
+      const productoId = parseInt(item.productoId);
+      if (!acc[productoId]) {
+        acc[productoId] = {
+          producto: {
+            id: productoId,
+            codigo: item.productoCodigo,
+            descripcion: item.productoDescripcion,
+            unidadMedida: item.unidadMedida,
+          },
+          stockTotal: 0,
+          bodegas: 0,
+          ultimoMovimiento: item.ultimoMovimiento,
+        };
+      }
+      acc[productoId].stockTotal += parseFloat(item.stock);
+      acc[productoId].bodegas++;
+
+      // Mantener el último movimiento más reciente
+      if (
+        new Date(item.ultimoMovimiento) >
+        new Date(acc[productoId].ultimoMovimiento || '1970-01-01')
+      ) {
+        acc[productoId].ultimoMovimiento = item.ultimoMovimiento;
+      }
+
+      return acc;
+    }, {});
 
     return {
       inventario: inventario.map((item) => ({
@@ -312,9 +446,17 @@ export class MovimientosService {
         bodega: {
           id: parseInt(item.bodegaId),
           nombre: item.bodegaNombre,
+          ubicacion: item.bodegaUbicacion,
         },
         stock: parseFloat(item.stock),
+        totalMovimientos: parseInt(item.totalMovimientos),
+        ultimoMovimiento: item.ultimoMovimiento,
+        totalEntradas: parseFloat(item.totalEntradas),
+        totalSalidas: parseFloat(item.totalSalidas),
       })),
+      estadisticas,
+      resumenPorBodega: Object.values(resumenPorBodega),
+      resumenPorProducto: Object.values(resumenPorProducto),
       totalItems: inventario.length,
     };
   }
@@ -342,7 +484,9 @@ export class MovimientosService {
 
     let saldoAcumulado = 0;
     const kardexConSaldo = kardex.map((mov) => {
-      const cantidad = mov.tipo === 'entrada' ? mov.cantidad : -mov.cantidad;
+      const cantidadNumerica = Number(mov.cantidad);
+      const cantidad =
+        mov.tipo === 'entrada' ? cantidadNumerica : -cantidadNumerica;
       saldoAcumulado += cantidad;
 
       return {
@@ -438,6 +582,450 @@ export class MovimientosService {
   async remove(id: number): Promise<void> {
     const movimiento = await this.findOne(id);
     await this.movimientoRepository.remove(movimiento);
+  }
+
+  async generateExcelReport(queryDto: ExcelQueryDto): Promise<Buffer> {
+    const movimientosData = await this.findAllForExcel(queryDto);
+
+    const entradas = movimientosData.filter((mov) => mov.tipo === 'entrada');
+    const salidas = movimientosData.filter((mov) => mov.tipo === 'salida');
+
+    const workbook = XLSX.utils.book_new();
+
+    const entradasData = entradas.map((mov) => ({
+      Fecha: new Date(mov.fecha).toLocaleDateString('es-ES'),
+      'Código Producto': mov.producto.codigo,
+      'Descripción Producto': mov.producto.descripcion,
+      'Cliente/Proveedor': mov.cliente ? mov.cliente.nombre : 'Sin cliente',
+      Cantidad: mov.cantidad,
+      'Unidad Medida': mov.producto.unidadMedida?.nombre || 'Sin unidad',
+      Bodega: mov.bodega.nombre,
+      Observación: mov.observacion || '',
+    }));
+
+    const salidasData = salidas.map((mov) => ({
+      Fecha: new Date(mov.fecha).toLocaleDateString('es-ES'),
+      'Código Producto': mov.producto.codigo,
+      'Descripción Producto': mov.producto.descripcion,
+      'Cliente/Proveedor': mov.cliente ? mov.cliente.nombre : 'Sin cliente',
+      Cantidad: mov.cantidad,
+      'Unidad Medida': mov.producto.unidadMedida?.nombre || 'Sin unidad',
+      Bodega: mov.bodega.nombre,
+      Observación: mov.observacion || '',
+    }));
+
+    // Crear hojas con diseño mejorado
+    const entradasWorksheet = this.createStyledWorksheet(entradasData, 'ENTRADAS DE INVENTARIO', '#4CAF50');
+    const salidasWorksheet = this.createStyledWorksheet(salidasData, 'SALIDAS DE INVENTARIO', '#F44336');
+
+    XLSX.utils.book_append_sheet(workbook, entradasWorksheet, 'Entradas');
+    XLSX.utils.book_append_sheet(workbook, salidasWorksheet, 'Salidas');
+
+    return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+  }
+
+  private createStyledWorksheet(data: any[], title: string, headerColor: string) {
+    // Crear hoja con título primero, luego agregar datos
+    const worksheet = XLSX.utils.aoa_to_sheet([[title]]);
+    
+    // Agregar una fila vacía después del título
+    XLSX.utils.sheet_add_aoa(worksheet, [[]], { origin: 'A2' });
+    
+    // Agregar datos empezando desde la fila 3
+    if (data.length > 0) {
+      XLSX.utils.sheet_add_json(worksheet, data, { origin: 'A3', skipHeader: false });
+    }
+
+    // Configurar anchos de columnas
+    const columnWidths = [
+      { wch: 12 }, // Fecha
+      { wch: 15 }, // Código
+      { wch: 35 }, // Descripción
+      { wch: 25 }, // Cliente/Proveedor
+      { wch: 10 }, // Cantidad
+      { wch: 15 }, // Unidad
+      { wch: 20 }, // Bodega
+      { wch: 30 }, // Observación
+    ];
+    worksheet['!cols'] = columnWidths;
+
+    // Obtener el rango de datos
+    const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
+
+    // Mergear celdas para el título
+    if (!worksheet['!merges']) worksheet['!merges'] = [];
+    worksheet['!merges'].push({
+      s: { r: 0, c: 0 },
+      e: { r: 0, c: 7 }
+    });
+
+    // Estilo para el título
+    const titleStyle = {
+      font: { bold: true, size: 16, color: { rgb: '2C3E50' } },
+      alignment: { horizontal: 'center', vertical: 'center' },
+      fill: { fgColor: { rgb: 'ECF0F1' } },
+      border: {
+        top: { style: 'medium', color: { rgb: '2C3E50' } },
+        bottom: { style: 'medium', color: { rgb: '2C3E50' } },
+        left: { style: 'medium', color: { rgb: '2C3E50' } },
+        right: { style: 'medium', color: { rgb: '2C3E50' } },
+      },
+    };
+    
+    if (worksheet['A1']) {
+      worksheet['A1'].s = titleStyle;
+    }
+
+    // Estilos para las cabeceras (fila 3)
+    const headerStyle = {
+      font: { bold: true, color: { rgb: 'FFFFFF' }, size: 12 },
+      fill: { fgColor: { rgb: headerColor.replace('#', '') } },
+      alignment: { horizontal: 'center', vertical: 'center' },
+      border: {
+        top: { style: 'thin', color: { rgb: '000000' } },
+        bottom: { style: 'thin', color: { rgb: '000000' } },
+        left: { style: 'thin', color: { rgb: '000000' } },
+        right: { style: 'thin', color: { rgb: '000000' } },
+      },
+    };
+
+    // Estilos para las celdas de datos
+    const dataStyle = {
+      font: { size: 10 },
+      alignment: { vertical: 'center', wrapText: true },
+      border: {
+        top: { style: 'thin', color: { rgb: 'CCCCCC' } },
+        bottom: { style: 'thin', color: { rgb: 'CCCCCC' } },
+        left: { style: 'thin', color: { rgb: 'CCCCCC' } },
+        right: { style: 'thin', color: { rgb: 'CCCCCC' } },
+      },
+    };
+
+    // Estilo para filas alternadas
+    const alternateRowStyle = {
+      ...dataStyle,
+      fill: { fgColor: { rgb: 'F8F9FA' } },
+    };
+
+    if (data.length > 0) {
+      // Aplicar estilos a las cabeceras (fila 3, índice 2)
+      for (let col = 0; col <= 7; col++) {
+        const cellAddress = XLSX.utils.encode_cell({ r: 2, c: col });
+        if (worksheet[cellAddress]) {
+          worksheet[cellAddress].s = headerStyle;
+        }
+      }
+
+      // Aplicar estilos a las celdas de datos (desde fila 4, índice 3)
+      for (let row = 3; row <= range.e.r; row++) {
+        const isAlternate = (row - 3) % 2 === 0;
+        for (let col = 0; col <= 7; col++) {
+          const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
+          if (worksheet[cellAddress]) {
+            // Aplicar estilo base
+            worksheet[cellAddress].s = isAlternate ? alternateRowStyle : dataStyle;
+            
+            // Estilos especiales para columnas específicas
+            if (col === 4) { // Columna Cantidad
+              worksheet[cellAddress].s = {
+                ...worksheet[cellAddress].s,
+                alignment: { horizontal: 'right', vertical: 'center' },
+                numFmt: '#,##0.00',
+              };
+            } else if (col === 0) { // Columna Fecha
+              worksheet[cellAddress].s = {
+                ...worksheet[cellAddress].s,
+                alignment: { horizontal: 'center', vertical: 'center' },
+              };
+            }
+          }
+        }
+      }
+    }
+
+    // Configurar altura de filas
+    if (!worksheet['!rows']) worksheet['!rows'] = [];
+    worksheet['!rows'][0] = { hpx: 30 }; // Título
+    worksheet['!rows'][1] = { hpx: 10 }; // Fila vacía
+    worksheet['!rows'][2] = { hpx: 25 }; // Cabeceras
+    
+    // Altura para filas de datos
+    for (let i = 3; i <= range.e.r; i++) {
+      worksheet['!rows'][i] = { hpx: 20 };
+    }
+
+    return worksheet;
+  }
+
+  async generateInventarioExcelReport(queryDto: InventarioExcelQueryDto): Promise<Buffer> {
+    const inventarioData = await this.getInventarioForExcel(queryDto);
+
+    const workbook = XLSX.utils.book_new();
+
+    // Crear hoja de inventario con diseño mejorado
+    const inventarioWorksheet = this.createInventarioStyledWorksheet(inventarioData, 'REPORTE DE INVENTARIO', '#2196F3');
+
+    XLSX.utils.book_append_sheet(workbook, inventarioWorksheet, 'Inventario');
+
+    return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+  }
+
+  private async getInventarioForExcel(queryDto: InventarioExcelQueryDto) {
+    let queryBuilder = this.movimientoRepository
+      .createQueryBuilder('movimiento')
+      .select([
+        'producto.codigo as "codigoProducto"',
+        'producto.descripcion as "descripcion"',
+        'bodega.nombre as "bodega"',
+        'unidadMedida.nombre as "medida"',
+        'SUM(CASE WHEN movimiento.tipo = \'entrada\' THEN movimiento.cantidad ELSE 0 END) as "entradas"',
+        'SUM(CASE WHEN movimiento.tipo = \'salida\' THEN movimiento.cantidad ELSE 0 END) as "salidas"',
+        'SUM(CASE WHEN movimiento.tipo = \'entrada\' THEN movimiento.cantidad ELSE -movimiento.cantidad END) as "stock"',
+      ])
+      .leftJoin('movimiento.producto', 'producto')
+      .leftJoin('producto.unidadMedida', 'unidadMedida')
+      .leftJoin('movimiento.bodega', 'bodega')
+      .groupBy(
+        'producto.codigo, producto.descripcion, bodega.nombre, unidadMedida.nombre',
+      )
+      .orderBy('producto.codigo', 'ASC')
+      .addOrderBy('bodega.nombre', 'ASC');
+
+    // Aplicar filtro de bodega si se especifica
+    if (queryDto.bodegaId) {
+      queryBuilder = queryBuilder.andWhere('bodega.id = :bodegaId', { 
+        bodegaId: queryDto.bodegaId 
+      });
+    }
+
+    const resultado = await queryBuilder.getRawMany();
+
+    return resultado.map((item) => ({
+      'CODIGO PRODUCTO': item.codigoProducto,
+      'DESCRIPCION': item.descripcion,
+      'BODEGA': item.bodega,
+      'MEDIDA': item.medida || 'Sin unidad',
+      'ENTRADAS': parseFloat(item.entradas) || 0,
+      'SALIDAS': parseFloat(item.salidas) || 0,
+      'STOCK': parseFloat(item.stock) || 0,
+    }));
+  }
+
+  private createInventarioStyledWorksheet(data: any[], title: string, headerColor: string) {
+    // Crear hoja con título primero
+    const worksheet = XLSX.utils.aoa_to_sheet([[title]]);
+    
+    // Agregar una fila vacía después del título
+    XLSX.utils.sheet_add_aoa(worksheet, [[]], { origin: 'A2' });
+    
+    // Agregar datos empezando desde la fila 3
+    if (data.length > 0) {
+      XLSX.utils.sheet_add_json(worksheet, data, { origin: 'A3', skipHeader: false });
+    }
+
+    // Configurar anchos de columnas específicos para inventario
+    const columnWidths = [
+      { wch: 18 }, // CODIGO PRODUCTO
+      { wch: 40 }, // DESCRIPCION
+      { wch: 20 }, // BODEGA
+      { wch: 12 }, // MEDIDA
+      { wch: 12 }, // ENTRADAS
+      { wch: 12 }, // SALIDAS
+      { wch: 12 }, // STOCK
+    ];
+    worksheet['!cols'] = columnWidths;
+
+    // Obtener el rango de datos
+    const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
+
+    // Mergear celdas para el título
+    if (!worksheet['!merges']) worksheet['!merges'] = [];
+    worksheet['!merges'].push({
+      s: { r: 0, c: 0 },
+      e: { r: 0, c: 6 }
+    });
+
+    // Estilo para el título
+    const titleStyle = {
+      font: { bold: true, size: 16, color: { rgb: '2C3E50' } },
+      alignment: { horizontal: 'center', vertical: 'center' },
+      fill: { fgColor: { rgb: 'ECF0F1' } },
+      border: {
+        top: { style: 'medium', color: { rgb: '2C3E50' } },
+        bottom: { style: 'medium', color: { rgb: '2C3E50' } },
+        left: { style: 'medium', color: { rgb: '2C3E50' } },
+        right: { style: 'medium', color: { rgb: '2C3E50' } },
+      },
+    };
+    
+    if (worksheet['A1']) {
+      worksheet['A1'].s = titleStyle;
+    }
+
+    // Estilos para las cabeceras (fila 3)
+    const headerStyle = {
+      font: { bold: true, color: { rgb: 'FFFFFF' }, size: 12 },
+      fill: { fgColor: { rgb: headerColor.replace('#', '') } },
+      alignment: { horizontal: 'center', vertical: 'center' },
+      border: {
+        top: { style: 'thin', color: { rgb: '000000' } },
+        bottom: { style: 'thin', color: { rgb: '000000' } },
+        left: { style: 'thin', color: { rgb: '000000' } },
+        right: { style: 'thin', color: { rgb: '000000' } },
+      },
+    };
+
+    // Estilos para las celdas de datos
+    const dataStyle = {
+      font: { size: 10 },
+      alignment: { vertical: 'center', wrapText: true },
+      border: {
+        top: { style: 'thin', color: { rgb: 'CCCCCC' } },
+        bottom: { style: 'thin', color: { rgb: 'CCCCCC' } },
+        left: { style: 'thin', color: { rgb: 'CCCCCC' } },
+        right: { style: 'thin', color: { rgb: 'CCCCCC' } },
+      },
+    };
+
+    // Estilo para filas alternadas
+    const alternateRowStyle = {
+      ...dataStyle,
+      fill: { fgColor: { rgb: 'F8F9FA' } },
+    };
+
+    // Estilo para stock bajo (menor a 10)
+    const lowStockStyle = {
+      ...dataStyle,
+      fill: { fgColor: { rgb: 'FFEBEE' } },
+      font: { ...dataStyle.font, color: { rgb: 'D32F2F' } },
+    };
+
+    if (data.length > 0) {
+      // Aplicar estilos a las cabeceras (fila 3, índice 2)
+      for (let col = 0; col <= 6; col++) {
+        const cellAddress = XLSX.utils.encode_cell({ r: 2, c: col });
+        if (worksheet[cellAddress]) {
+          worksheet[cellAddress].s = headerStyle;
+        }
+      }
+
+      // Aplicar estilos a las celdas de datos (desde fila 4, índice 3)
+      for (let row = 3; row <= range.e.r; row++) {
+        const isAlternate = (row - 3) % 2 === 0;
+        
+        // Obtener el valor del stock para determinar el estilo
+        const stockCellAddress = XLSX.utils.encode_cell({ r: row, c: 6 });
+        const stockValue = worksheet[stockCellAddress] ? parseFloat(worksheet[stockCellAddress].v) : 0;
+        const isLowStock = stockValue < 10;
+
+        for (let col = 0; col <= 6; col++) {
+          const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
+          if (worksheet[cellAddress]) {
+            // Aplicar estilo base o de stock bajo
+            if (isLowStock) {
+              worksheet[cellAddress].s = lowStockStyle;
+            } else {
+              worksheet[cellAddress].s = isAlternate ? alternateRowStyle : dataStyle;
+            }
+            
+            // Estilos especiales para columnas específicas
+            if (col >= 4 && col <= 6) { // Columnas ENTRADAS, SALIDAS, STOCK
+              worksheet[cellAddress].s = {
+                ...worksheet[cellAddress].s,
+                alignment: { horizontal: 'right', vertical: 'center' },
+                numFmt: '#,##0.00',
+              };
+            } else if (col === 0) { // Columna CODIGO PRODUCTO
+              worksheet[cellAddress].s = {
+                ...worksheet[cellAddress].s,
+                alignment: { horizontal: 'center', vertical: 'center' },
+              };
+            }
+          }
+        }
+      }
+    }
+
+    // Configurar altura de filas
+    if (!worksheet['!rows']) worksheet['!rows'] = [];
+    worksheet['!rows'][0] = { hpx: 30 }; // Título
+    worksheet['!rows'][1] = { hpx: 10 }; // Fila vacía
+    worksheet['!rows'][2] = { hpx: 25 }; // Cabeceras
+    
+    // Altura para filas de datos
+    for (let i = 3; i <= range.e.r; i++) {
+      worksheet['!rows'][i] = { hpx: 20 };
+    }
+
+    return worksheet;
+  }
+
+  private async findAllForExcel(queryDto: ExcelQueryDto) {
+    const {
+      tipo,
+      productoId,
+      productoCodigo,
+      bodegaId,
+      clienteId,
+      fechaDesde,
+      fechaHasta,
+      usuarioId,
+    } = queryDto;
+
+    const queryBuilder = this.movimientoRepository
+      .createQueryBuilder('movimiento')
+      .leftJoinAndSelect('movimiento.producto', 'producto')
+      .leftJoinAndSelect('producto.unidadMedida', 'unidadMedida')
+      .leftJoinAndSelect('movimiento.bodega', 'bodega')
+      .leftJoinAndSelect('movimiento.usuario', 'usuario')
+      .leftJoinAndSelect('movimiento.cliente', 'cliente')
+      .orderBy('movimiento.fecha', 'DESC');
+
+    if (tipo) {
+      queryBuilder.andWhere('movimiento.tipo = :tipo', { tipo });
+    }
+
+    if (productoId) {
+      queryBuilder.andWhere('producto.id = :productoId', { productoId });
+    }
+
+    if (productoCodigo) {
+      queryBuilder.andWhere('producto.codigo ILIKE :productoCodigo', {
+        productoCodigo: `%${productoCodigo}%`,
+      });
+    }
+
+    if (bodegaId) {
+      queryBuilder.andWhere('bodega.id = :bodegaId', { bodegaId });
+    }
+
+    if (clienteId) {
+      queryBuilder.andWhere('cliente.id = :clienteId', { clienteId });
+    }
+
+    if (usuarioId) {
+      queryBuilder.andWhere('usuario.id = :usuarioId', { usuarioId });
+    }
+
+    if (fechaDesde && fechaHasta) {
+      queryBuilder.andWhere(
+        'movimiento.fecha BETWEEN :fechaDesde AND :fechaHasta',
+        {
+          fechaDesde: new Date(fechaDesde),
+          fechaHasta: new Date(fechaHasta + ' 23:59:59'),
+        },
+      );
+    } else if (fechaDesde) {
+      queryBuilder.andWhere('movimiento.fecha >= :fechaDesde', {
+        fechaDesde: new Date(fechaDesde),
+      });
+    } else if (fechaHasta) {
+      queryBuilder.andWhere('movimiento.fecha <= :fechaHasta', {
+        fechaHasta: new Date(fechaHasta + ' 23:59:59'),
+      });
+    }
+
+    return await queryBuilder.getMany();
   }
 
   private async getStockProductoBodega(
