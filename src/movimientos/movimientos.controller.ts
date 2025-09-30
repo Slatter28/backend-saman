@@ -22,7 +22,7 @@ import {
   ExcelQueryDto,
   InventarioExcelQueryDto,
 } from './dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CustomJwtGuard } from '../auth/guards/custom-jwt.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import {
@@ -35,7 +35,7 @@ import {
 
 @ApiTags('movimientos')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(CustomJwtGuard, RolesGuard)
 @Controller('movimientos')
 export class MovimientosController {
   constructor(private readonly movimientosService: MovimientosService) {}
@@ -79,7 +79,6 @@ export class MovimientosController {
 
   @Get('excel')
   @Roles('admin', 'bodeguero')
-  @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Descargar reporte de movimientos en Excel' })
   @ApiResponse({
@@ -116,7 +115,6 @@ export class MovimientosController {
 
   @Get('inventario-excel')
   @Roles('admin', 'bodeguero')
-  @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Descargar reporte de inventario consolidado en Excel' })
   @ApiResponse({
@@ -153,7 +151,6 @@ export class MovimientosController {
 
   @Get()
   @Roles('admin', 'bodeguero')
-  @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Obtener todos los movimientos con filtros' })
   @ApiResponse({
@@ -184,7 +181,6 @@ export class MovimientosController {
 
   @Get('inventario')
   @Roles('admin', 'bodeguero')
-  @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({
     summary: 'Obtener resumen general del inventario con filtros',
@@ -215,7 +211,6 @@ export class MovimientosController {
 
   @Get('kardex/:productId')
   @Roles('admin', 'bodeguero')
-  @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({
     summary: 'Obtener kardex (historial completo) de un producto',
@@ -233,7 +228,6 @@ export class MovimientosController {
 
   @Get(':id')
   @Roles('admin', 'bodeguero')
-  @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Obtener un movimiento por ID' })
   @ApiParam({ name: 'id', description: 'ID del movimiento', example: 1 })

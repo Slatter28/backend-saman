@@ -7,11 +7,12 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { Usuario } from '../entities/usuario.entity';
 import { LocalStrategy, JwtStrategy } from './strategies';
+import { CustomJwtGuard, OptionalCustomJwtGuard } from './guards';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Usuario]),
-    PassportModule,
+    PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
@@ -24,7 +25,7 @@ import { LocalStrategy, JwtStrategy } from './strategies';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, LocalStrategy, JwtStrategy],
-  exports: [AuthService],
+  providers: [AuthService, LocalStrategy, JwtStrategy, CustomJwtGuard, OptionalCustomJwtGuard],
+  exports: [AuthService, PassportModule, JwtModule, CustomJwtGuard, OptionalCustomJwtGuard],
 })
 export class AuthModule {}

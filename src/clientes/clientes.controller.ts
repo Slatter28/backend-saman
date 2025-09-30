@@ -19,7 +19,7 @@ import {
 } from '@nestjs/swagger';
 import { ClientesService } from './clientes.service';
 import { CreateClienteDto, UpdateClienteDto, QueryClienteDto } from './dto';
-import { JwtAuthGuard, RolesGuard } from '../auth/guards';
+import { CustomJwtGuard, RolesGuard } from '../auth/guards';
 import { Roles } from '../auth/decorators';
 
 @ApiTags('clientes')
@@ -28,6 +28,8 @@ export class ClientesController {
   constructor(private readonly clientesService: ClientesService) {}
 
   @Get()
+  @UseGuards(CustomJwtGuard)
+  @ApiBearerAuth('JWT-auth')
   @ApiOperation({
     summary: 'Obtener lista de clientes con paginación y filtros',
   })
@@ -61,6 +63,8 @@ export class ClientesController {
   }
 
   @Get(':id')
+  @UseGuards(CustomJwtGuard)
+  @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Obtener un cliente por ID' })
   @ApiParam({
     name: 'id',
@@ -89,6 +93,8 @@ export class ClientesController {
   }
 
   @Get(':id/movimientos')
+  @UseGuards(CustomJwtGuard)
+  @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Obtener historial de movimientos de un cliente' })
   @ApiParam({
     name: 'id',
@@ -141,7 +147,7 @@ export class ClientesController {
   }
 
   @Post()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(CustomJwtGuard)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Crear un nuevo cliente' })
   @ApiResponse({
@@ -167,7 +173,7 @@ export class ClientesController {
   }
 
   @Patch(':id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(CustomJwtGuard)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Actualizar un cliente' })
   @ApiParam({
@@ -202,7 +208,7 @@ export class ClientesController {
   }
 
   @Delete(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(CustomJwtGuard, RolesGuard)
   @Roles('admin')
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Eliminar un cliente (solo administradores)' })

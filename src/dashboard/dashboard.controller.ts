@@ -14,12 +14,12 @@ import {
   ApiQuery,
 } from '@nestjs/swagger';
 import { DashboardService } from './dashboard.service';
-import { JwtAuthGuard } from '../auth/guards';
+import { CustomJwtGuard } from '../auth/guards';
 import { MovimientosRecientesDto } from './dto';
 
 @ApiTags('dashboard')
 @Controller('dashboard')
-@UseGuards(JwtAuthGuard)
+@UseGuards(CustomJwtGuard)
 @ApiBearerAuth('JWT-auth')
 export class DashboardController {
   constructor(private readonly dashboardService: DashboardService) {}

@@ -2,10 +2,14 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  Inject,
+  Scope,
 } from '@nestjs/common';
+import { REQUEST } from '@nestjs/core';
+import { Request } from 'express';
+import { InjectDataSource } from '@nestjs/typeorm';
+import { DataSource } from 'typeorm';
 import * as XLSX from 'xlsx';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { Movimiento } from '../entities/movimiento.entity';
 import { Producto } from '../entities/producto.entity';
 import { Bodega } from '../entities/bodega.entity';
@@ -20,160 +24,265 @@ import {
   InventarioExcelQueryDto,
 } from './dto';
 
-@Injectable()
+@Injectable({ scope: Scope.REQUEST })
 export class MovimientosService {
+  private tenantId: string;
+
   constructor(
-    @InjectRepository(Movimiento)
-    private readonly movimientoRepository: Repository<Movimiento>,
-    @InjectRepository(Producto)
-    private readonly productoRepository: Repository<Producto>,
-    @InjectRepository(Bodega)
-    private readonly bodegaRepository: Repository<Bodega>,
-    @InjectRepository(Cliente)
-    private readonly clienteRepository: Repository<Cliente>,
-    @InjectRepository(Usuario)
-    private readonly usuarioRepository: Repository<Usuario>,
-  ) {}
+    @Inject(REQUEST) private request: Request,
+    @InjectDataSource() private dataSource: DataSource,
+  ) {
+    // Prioridad: usuario autenticado > middleware > por defecto
+    const userTenant = (request as any).user?.bodegaId;
+    const middlewareTenant = request.tenantId;
+
+    this.tenantId = userTenant || middlewareTenant || 'principal';
+    console.log(`📦 MovimientosService inicializado para tenant: ${this.tenantId}`);
+
+    if ((request as any).user) {
+      console.log(`👤 Usuario autenticado detectado: ${(request as any).user.correo} - Tenant: ${this.tenantId}`);
+    } else if (middlewareTenant) {
+      console.log(`🔧 Tenant desde middleware: ${this.tenantId}`);
+    } else {
+      console.log(`👤 Sin usuario autenticado, usando tenant por defecto: ${this.tenantId}`);
+    }
+  }
+
+  private getSchemaName(tenantId: string): string {
+    const schemaMap: Record<string, string> = {
+      'principal': 'inventario_principal',
+      'sucursal': 'inventario_sucursal',
+    };
+    return schemaMap[tenantId] || 'inventario_principal';
+  }
+
+  private async executeWithTenant<T>(
+    operation: (manager: any) => Promise<T>
+  ): Promise<T> {
+    const schemaName = this.getSchemaName(this.tenantId);
+    const queryRunner = this.dataSource.createQueryRunner();
+
+    try {
+      await queryRunner.connect();
+      await queryRunner.query(`SET search_path TO ${schemaName}, public`);
+      console.log(`🗄️ Ejecutando operación en esquema: ${schemaName}`);
+
+      // Pasar el EntityManager al callback
+      const result = await operation(queryRunner.manager);
+      return result;
+    } finally {
+      // 🔥 IMPORTANTE: Siempre liberar el QueryRunner
+      await queryRunner.release();
+      console.log(`✅ QueryRunner liberado para esquema: ${schemaName}`);
+    }
+  }
+
+  // 🚀 NUEVO: Método especial para transacciones de inventario
+  private async executeWithTransaction<T>(
+    operation: (manager: any) => Promise<T>
+  ): Promise<T> {
+    const schemaName = this.getSchemaName(this.tenantId);
+    const queryRunner = this.dataSource.createQueryRunner();
+
+    try {
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+      await queryRunner.query(`SET search_path TO ${schemaName}, public`);
+      console.log(`🔄 Iniciando transacción en esquema: ${schemaName}`);
+
+      const result = await operation(queryRunner.manager);
+
+      await queryRunner.commitTransaction();
+      console.log(`✅ Transacción confirmada en esquema: ${schemaName}`);
+      return result;
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      console.log(`❌ Transacción revertida en esquema: ${schemaName}`);
+      throw error;
+    } finally {
+      await queryRunner.release();
+      console.log(`✅ QueryRunner liberado para esquema: ${schemaName}`);
+    }
+  }
+
+  getCurrentTenant(): string {
+    return this.tenantId;
+  }
 
   async createEntrada(
     createEntradaDto: CreateEntradaDto,
     userId: number,
   ): Promise<Movimiento> {
-    const { productoId, bodegaId, clienteId, cantidad, observacion } =
+    const { productoId, bodegaId, clienteId, cantidad, precio, observacion } =
       createEntradaDto;
 
-    // Validar que el producto existe
-    const producto = await this.productoRepository.findOne({
-      where: { id: productoId },
-    });
-    if (!producto) {
-      throw new NotFoundException(
-        `Producto con ID ${productoId} no encontrado`,
-      );
-    }
+    return this.executeWithTransaction(async (manager) => {
+      const productoRepository = manager.getRepository(Producto);
+      const bodegaRepository = manager.getRepository(Bodega);
+      const usuarioRepository = manager.getRepository(Usuario);
+      const clienteRepository = manager.getRepository(Cliente);
+      const movimientoRepository = manager.getRepository(Movimiento);
 
-    // Validar que la bodega existe
-    const bodega = await this.bodegaRepository.findOne({
-      where: { id: bodegaId },
-    });
-    if (!bodega) {
-      throw new NotFoundException(`Bodega con ID ${bodegaId} no encontrada`);
-    }
-
-    // Validar que el usuario existe
-    const usuario = await this.usuarioRepository.findOne({
-      where: { id: userId },
-    });
-    if (!usuario) {
-      throw new NotFoundException(`Usuario con ID ${userId} no encontrado`);
-    }
-
-    // Validar cliente si se proporciona
-    let cliente = null;
-    if (clienteId) {
-      cliente = await this.clienteRepository.findOne({
-        where: { id: clienteId },
+      // Validar que el producto existe EN EL TENANT ACTUAL
+      const producto = await productoRepository.findOne({
+        where: { id: productoId },
       });
-      if (!cliente) {
+      if (!producto) {
         throw new NotFoundException(
-          `Cliente con ID ${clienteId} no encontrado`,
+          `Producto con ID ${productoId} no encontrado en ${this.getCurrentTenant()}`,
         );
       }
-      // Validar que el cliente puede ser proveedor
-      if (cliente.tipo !== 'proveedor' && cliente.tipo !== 'ambos') {
-        throw new BadRequestException(
-          'El cliente seleccionado no es un proveedor válido',
-        );
-      }
-    }
 
-    const movimiento = this.movimientoRepository.create({
-      tipo: 'entrada',
-      cantidad,
-      observacion,
-      producto,
-      bodega,
-      usuario,
-      cliente,
+      // Validar que la bodega existe EN EL TENANT ACTUAL
+      const bodega = await bodegaRepository.findOne({
+        where: { id: bodegaId },
+      });
+      if (!bodega) {
+        throw new NotFoundException(`Bodega con ID ${bodegaId} no encontrada en ${this.getCurrentTenant()}`);
+      }
+
+      // Validar que el usuario existe EN EL TENANT ACTUAL
+      const usuario = await usuarioRepository.findOne({
+        where: { id: userId },
+      });
+      if (!usuario) {
+        throw new NotFoundException(`Usuario con ID ${userId} no encontrado en ${this.getCurrentTenant()}`);
+      }
+
+      // Validar cliente si se proporciona EN EL TENANT ACTUAL
+      let cliente = null;
+      if (clienteId) {
+        cliente = await clienteRepository.findOne({
+          where: { id: clienteId },
+        });
+        if (!cliente) {
+          throw new NotFoundException(
+            `Cliente con ID ${clienteId} no encontrado en ${this.getCurrentTenant()}`,
+          );
+        }
+        // Validar que el cliente puede ser proveedor
+        if (cliente.tipo !== 'proveedor' && cliente.tipo !== 'ambos') {
+          throw new BadRequestException(
+            'El cliente seleccionado no es un proveedor válido',
+          );
+        }
+      }
+
+      const movimiento = movimientoRepository.create({
+        tipo: 'entrada',
+        cantidad,
+        precio,
+        observacion,
+        producto,
+        bodega,
+        usuario,
+        cliente,
+      });
+
+      const savedMovimiento = await movimientoRepository.save(movimiento);
+
+      console.log(`📦➡️ Entrada creada en ${this.getCurrentTenant()}: ${cantidad} ${producto.codigo} -> ${bodega.nombre}`);
+
+      // Retornar con relaciones completas
+      return movimientoRepository.findOne({
+        where: { id: savedMovimiento.id },
+        relations: ['producto', 'producto.unidadMedida', 'bodega', 'usuario', 'cliente'],
+      });
     });
-
-    return this.movimientoRepository.save(movimiento);
   }
 
   async createSalida(
     createSalidaDto: CreateSalidaDto,
     userId: number,
   ): Promise<Movimiento> {
-    const { productoId, bodegaId, clienteId, cantidad, observacion } =
+    const { productoId, bodegaId, clienteId, cantidad, precio, observacion } =
       createSalidaDto;
 
-    // Validar que el producto existe
-    const producto = await this.productoRepository.findOne({
-      where: { id: productoId },
-    });
-    if (!producto) {
-      throw new NotFoundException(
-        `Producto con ID ${productoId} no encontrado`,
-      );
-    }
+    return this.executeWithTransaction(async (manager) => {
+      const productoRepository = manager.getRepository(Producto);
+      const bodegaRepository = manager.getRepository(Bodega);
+      const usuarioRepository = manager.getRepository(Usuario);
+      const clienteRepository = manager.getRepository(Cliente);
+      const movimientoRepository = manager.getRepository(Movimiento);
 
-    // Validar que la bodega existe
-    const bodega = await this.bodegaRepository.findOne({
-      where: { id: bodegaId },
-    });
-    if (!bodega) {
-      throw new NotFoundException(`Bodega con ID ${bodegaId} no encontrada`);
-    }
-
-    // Validar que el usuario existe
-    const usuario = await this.usuarioRepository.findOne({
-      where: { id: userId },
-    });
-    if (!usuario) {
-      throw new NotFoundException(`Usuario con ID ${userId} no encontrado`);
-    }
-
-    // Validar stock disponible
-    const stockDisponible = await this.getStockProductoBodega(
-      productoId,
-      bodegaId,
-    );
-    if (stockDisponible < cantidad) {
-      throw new BadRequestException(
-        `Stock insuficiente. Stock disponible: ${stockDisponible}, solicitado: ${cantidad}`,
-      );
-    }
-
-    // Validar cliente si se proporciona
-    let cliente = null;
-    if (clienteId) {
-      cliente = await this.clienteRepository.findOne({
-        where: { id: clienteId },
+      // Validar que el producto existe EN EL TENANT ACTUAL
+      const producto = await productoRepository.findOne({
+        where: { id: productoId },
       });
-      if (!cliente) {
+      if (!producto) {
         throw new NotFoundException(
-          `Cliente con ID ${clienteId} no encontrado`,
+          `Producto con ID ${productoId} no encontrado en ${this.getCurrentTenant()}`,
         );
       }
-      // Validar que el cliente puede comprar
-      if (cliente.tipo !== 'cliente' && cliente.tipo !== 'ambos') {
+
+      // Validar que la bodega existe EN EL TENANT ACTUAL
+      const bodega = await bodegaRepository.findOne({
+        where: { id: bodegaId },
+      });
+      if (!bodega) {
+        throw new NotFoundException(`Bodega con ID ${bodegaId} no encontrada en ${this.getCurrentTenant()}`);
+      }
+
+      // Validar que el usuario existe EN EL TENANT ACTUAL
+      const usuario = await usuarioRepository.findOne({
+        where: { id: userId },
+      });
+      if (!usuario) {
+        throw new NotFoundException(`Usuario con ID ${userId} no encontrado en ${this.getCurrentTenant()}`);
+      }
+
+      // Validar stock disponible EN EL TENANT ACTUAL
+      const stockDisponible = await this.getStockProductoBodegaWithManager(
+        manager,
+        productoId,
+        bodegaId,
+      );
+      if (stockDisponible < cantidad) {
         throw new BadRequestException(
-          'El cliente seleccionado no es un cliente válido',
+          `Stock insuficiente en ${this.getCurrentTenant()}. Stock disponible: ${stockDisponible}, solicitado: ${cantidad}`,
         );
       }
-    }
 
-    const movimiento = this.movimientoRepository.create({
-      tipo: 'salida',
-      cantidad,
-      observacion,
-      producto,
-      bodega,
-      usuario,
-      cliente,
+      // Validar cliente si se proporciona EN EL TENANT ACTUAL
+      let cliente = null;
+      if (clienteId) {
+        cliente = await clienteRepository.findOne({
+          where: { id: clienteId },
+        });
+        if (!cliente) {
+          throw new NotFoundException(
+            `Cliente con ID ${clienteId} no encontrado en ${this.getCurrentTenant()}`,
+          );
+        }
+        // Validar que el cliente puede comprar
+        if (cliente.tipo !== 'cliente' && cliente.tipo !== 'ambos') {
+          throw new BadRequestException(
+            'El cliente seleccionado no es un cliente válido',
+          );
+        }
+      }
+
+      const movimiento = movimientoRepository.create({
+        tipo: 'salida',
+        cantidad,
+        precio: precio ?? 0,
+        observacion,
+        producto,
+        bodega,
+        usuario,
+        cliente,
+      });
+
+      const savedMovimiento = await movimientoRepository.save(movimiento);
+
+      console.log(`📦⬅️ Salida creada en ${this.getCurrentTenant()}: ${cantidad} ${producto.codigo} <- ${bodega.nombre}`);
+
+      // Retornar con relaciones completas
+      return movimientoRepository.findOne({
+        where: { id: savedMovimiento.id },
+        relations: ['producto', 'producto.unidadMedida', 'bodega', 'usuario', 'cliente'],
+      });
     });
-
-    return this.movimientoRepository.save(movimiento);
   }
 
   async findAll(queryDto: QueryMovimientoDto) {
@@ -192,91 +301,100 @@ export class MovimientosService {
 
     const skip = (page - 1) * limit;
 
-    const queryBuilder = this.movimientoRepository
-      .createQueryBuilder('movimiento')
-      .leftJoinAndSelect('movimiento.producto', 'producto')
-      .leftJoinAndSelect('producto.unidadMedida', 'unidadMedida')
-      .leftJoinAndSelect('movimiento.bodega', 'bodega')
-      .leftJoinAndSelect('movimiento.usuario', 'usuario')
-      .leftJoinAndSelect('movimiento.cliente', 'cliente')
-      .skip(skip)
-      .take(limit)
-      .orderBy('movimiento.fecha', 'DESC');
+    return this.executeWithTenant(async (manager) => {
+      const movimientoRepository = manager.getRepository(Movimiento);
 
-    if (tipo) {
-      queryBuilder.andWhere('movimiento.tipo = :tipo', { tipo });
-    }
+      const queryBuilder = movimientoRepository
+        .createQueryBuilder('movimiento')
+        .leftJoinAndSelect('movimiento.producto', 'producto')
+        .leftJoinAndSelect('producto.unidadMedida', 'unidadMedida')
+        .leftJoinAndSelect('movimiento.bodega', 'bodega')
+        .leftJoinAndSelect('movimiento.usuario', 'usuario')
+        .leftJoinAndSelect('movimiento.cliente', 'cliente')
+        .skip(skip)
+        .take(limit)
+        .orderBy('movimiento.fecha', 'DESC');
 
-    if (productoId) {
-      queryBuilder.andWhere('producto.id = :productoId', { productoId });
-    }
+      if (tipo) {
+        queryBuilder.andWhere('movimiento.tipo = :tipo', { tipo });
+      }
 
-    if (productoCodigo) {
-      queryBuilder.andWhere('producto.codigo ILIKE :productoCodigo', {
-        productoCodigo: `%${productoCodigo}%`,
-      });
-    }
+      if (productoId) {
+        queryBuilder.andWhere('producto.id = :productoId', { productoId });
+      }
 
-    if (bodegaId) {
-      queryBuilder.andWhere('bodega.id = :bodegaId', { bodegaId });
-    }
+      if (productoCodigo) {
+        queryBuilder.andWhere('producto.codigo ILIKE :productoCodigo', {
+          productoCodigo: `%${productoCodigo}%`,
+        });
+      }
 
-    if (clienteId) {
-      queryBuilder.andWhere('cliente.id = :clienteId', { clienteId });
-    }
+      if (bodegaId) {
+        queryBuilder.andWhere('bodega.id = :bodegaId', { bodegaId });
+      }
 
-    if (usuarioId) {
-      queryBuilder.andWhere('usuario.id = :usuarioId', { usuarioId });
-    }
+      if (clienteId) {
+        queryBuilder.andWhere('cliente.id = :clienteId', { clienteId });
+      }
 
-    if (fechaDesde && fechaHasta) {
-      queryBuilder.andWhere(
-        'movimiento.fecha BETWEEN :fechaDesde AND :fechaHasta',
-        {
+      if (usuarioId) {
+        queryBuilder.andWhere('usuario.id = :usuarioId', { usuarioId });
+      }
+
+      if (fechaDesde && fechaHasta) {
+        queryBuilder.andWhere(
+          'movimiento.fecha BETWEEN :fechaDesde AND :fechaHasta',
+          {
+            fechaDesde: new Date(fechaDesde),
+            fechaHasta: new Date(fechaHasta + ' 23:59:59'),
+          },
+        );
+      } else if (fechaDesde) {
+        queryBuilder.andWhere('movimiento.fecha >= :fechaDesde', {
           fechaDesde: new Date(fechaDesde),
+        });
+      } else if (fechaHasta) {
+        queryBuilder.andWhere('movimiento.fecha <= :fechaHasta', {
           fechaHasta: new Date(fechaHasta + ' 23:59:59'),
+        });
+      }
+
+      const [movimientos, total] = await queryBuilder.getManyAndCount();
+
+      console.log(`📦 Movimientos encontrados en ${this.getCurrentTenant()}: ${total} registros (página ${page})`);
+
+      return {
+        data: movimientos,
+        meta: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
         },
-      );
-    } else if (fechaDesde) {
-      queryBuilder.andWhere('movimiento.fecha >= :fechaDesde', {
-        fechaDesde: new Date(fechaDesde),
-      });
-    } else if (fechaHasta) {
-      queryBuilder.andWhere('movimiento.fecha <= :fechaHasta', {
-        fechaHasta: new Date(fechaHasta + ' 23:59:59'),
-      });
-    }
-
-    const [movimientos, total] = await queryBuilder.getManyAndCount();
-
-    return {
-      data: movimientos,
-      meta: {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
-      },
-    };
+      };
+    });
   }
 
   async findByProductoCodigo(codigo: string) {
-    const movimientos = await this.movimientoRepository
-      .createQueryBuilder('movimiento')
-      .leftJoinAndSelect('movimiento.producto', 'producto')
-      .leftJoinAndSelect('producto.unidadMedida', 'unidadMedida')
-      .leftJoinAndSelect('movimiento.bodega', 'bodega')
-      .leftJoinAndSelect('movimiento.usuario', 'usuario')
-      .leftJoinAndSelect('movimiento.cliente', 'cliente')
-      .where('producto.codigo = :codigo', { codigo })
-      .orderBy('movimiento.fecha', 'DESC')
-      .getMany();
+    return this.executeWithTenant(async (manager) => {
+      const movimientos = await manager
+        .getRepository(Movimiento)
+        .createQueryBuilder('movimiento')
+        .leftJoinAndSelect('movimiento.producto', 'producto')
+        .leftJoinAndSelect('producto.unidadMedida', 'unidadMedida')
+        .leftJoinAndSelect('movimiento.bodega', 'bodega')
+        .leftJoinAndSelect('movimiento.usuario', 'usuario')
+        .leftJoinAndSelect('movimiento.cliente', 'cliente')
+        .where('producto.codigo = :codigo', { codigo })
+        .orderBy('movimiento.fecha', 'DESC')
+        .getMany();
 
-    return {
-      codigo,
-      movimientos,
-      totalMovimientos: movimientos.length,
-    };
+      return {
+        codigo,
+        movimientos,
+        totalMovimientos: movimientos.length,
+      };
+    });
   }
 
   async getInventarioGeneral(filtros?: {
@@ -286,7 +404,9 @@ export class MovimientosService {
     soloStockBajo?: boolean;
     incluirCeros?: boolean;
   }) {
-    let queryBuilder = this.movimientoRepository
+    return this.executeWithTenant(async (manager) => {
+      let queryBuilder = manager
+        .getRepository(Movimiento)
       .createQueryBuilder('movimiento')
       .select([
         'producto.id as "productoId"',
@@ -435,115 +555,121 @@ export class MovimientosService {
       return acc;
     }, {});
 
-    return {
-      inventario: inventario.map((item) => ({
-        producto: {
-          id: parseInt(item.productoId),
-          codigo: item.productoCodigo,
-          descripcion: item.productoDescripcion,
-          unidadMedida: item.unidadMedida,
-        },
-        bodega: {
-          id: parseInt(item.bodegaId),
-          nombre: item.bodegaNombre,
-          ubicacion: item.bodegaUbicacion,
-        },
-        stock: parseFloat(item.stock),
-        totalMovimientos: parseInt(item.totalMovimientos),
-        ultimoMovimiento: item.ultimoMovimiento,
-        totalEntradas: parseFloat(item.totalEntradas),
-        totalSalidas: parseFloat(item.totalSalidas),
-      })),
-      estadisticas,
-      resumenPorBodega: Object.values(resumenPorBodega),
-      resumenPorProducto: Object.values(resumenPorProducto),
-      totalItems: inventario.length,
-    };
+      return {
+        inventario: inventario.map((item) => ({
+          producto: {
+            id: parseInt(item.productoId),
+            codigo: item.productoCodigo,
+            descripcion: item.productoDescripcion,
+            unidadMedida: item.unidadMedida,
+          },
+          bodega: {
+            id: parseInt(item.bodegaId),
+            nombre: item.bodegaNombre,
+            ubicacion: item.bodegaUbicacion,
+          },
+          stock: parseFloat(item.stock),
+          totalMovimientos: parseInt(item.totalMovimientos),
+          ultimoMovimiento: item.ultimoMovimiento,
+          totalEntradas: parseFloat(item.totalEntradas),
+          totalSalidas: parseFloat(item.totalSalidas),
+        })),
+        estadisticas,
+        resumenPorBodega: Object.values(resumenPorBodega),
+        resumenPorProducto: Object.values(resumenPorProducto),
+        totalItems: inventario.length,
+      };
+    });
   }
 
   async getKardexProducto(productoId: number) {
-    const producto = await this.productoRepository.findOne({
-      where: { id: productoId },
-      relations: ['unidadMedida'],
-    });
+    return this.executeWithTenant(async (manager) => {
+      const producto = await manager.getRepository(Producto).findOne({
+        where: { id: productoId },
+        relations: ['unidadMedida'],
+      });
 
-    if (!producto) {
-      throw new NotFoundException(
-        `Producto con ID ${productoId} no encontrado`,
-      );
-    }
+      if (!producto) {
+        throw new NotFoundException(
+          `Producto con ID ${productoId} no encontrado`,
+        );
+      }
 
-    const kardex = await this.movimientoRepository
-      .createQueryBuilder('movimiento')
-      .leftJoinAndSelect('movimiento.bodega', 'bodega')
-      .leftJoinAndSelect('movimiento.usuario', 'usuario')
-      .leftJoinAndSelect('movimiento.cliente', 'cliente')
-      .where('movimiento.producto.id = :productoId', { productoId })
-      .orderBy('movimiento.fecha', 'ASC')
-      .getMany();
+      const kardex = await manager
+        .getRepository(Movimiento)
+        .createQueryBuilder('movimiento')
+        .leftJoinAndSelect('movimiento.bodega', 'bodega')
+        .leftJoinAndSelect('movimiento.usuario', 'usuario')
+        .leftJoinAndSelect('movimiento.cliente', 'cliente')
+        .where('movimiento.producto.id = :productoId', { productoId })
+        .orderBy('movimiento.fecha', 'ASC')
+        .getMany();
 
-    let saldoAcumulado = 0;
-    const kardexConSaldo = kardex.map((mov) => {
-      const cantidadNumerica = Number(mov.cantidad);
-      const cantidad =
-        mov.tipo === 'entrada' ? cantidadNumerica : -cantidadNumerica;
-      saldoAcumulado += cantidad;
+      let saldoAcumulado = 0;
+      const kardexConSaldo = kardex.map((mov) => {
+        const cantidadNumerica = Number(mov.cantidad);
+        const cantidad =
+          mov.tipo === 'entrada' ? cantidadNumerica : -cantidadNumerica;
+        saldoAcumulado += cantidad;
+
+        return {
+          id: mov.id,
+          fecha: mov.fecha,
+          tipo: mov.tipo,
+          cantidad: mov.cantidad,
+          saldo: saldoAcumulado,
+          observacion: mov.observacion,
+          bodega: {
+            id: mov.bodega.id,
+            nombre: mov.bodega.nombre,
+          },
+          usuario: {
+            id: mov.usuario.id,
+            nombre: mov.usuario.nombre,
+          },
+          cliente: mov.cliente
+            ? {
+                id: mov.cliente.id,
+                nombre: mov.cliente.nombre,
+                tipo: mov.cliente.tipo,
+              }
+            : null,
+        };
+      });
 
       return {
-        id: mov.id,
-        fecha: mov.fecha,
-        tipo: mov.tipo,
-        cantidad: mov.cantidad,
-        saldo: saldoAcumulado,
-        observacion: mov.observacion,
-        bodega: {
-          id: mov.bodega.id,
-          nombre: mov.bodega.nombre,
+        producto: {
+          id: producto.id,
+          codigo: producto.codigo,
+          descripcion: producto.descripcion,
+          unidadMedida: producto.unidadMedida.nombre,
         },
-        usuario: {
-          id: mov.usuario.id,
-          nombre: mov.usuario.nombre,
-        },
-        cliente: mov.cliente
-          ? {
-              id: mov.cliente.id,
-              nombre: mov.cliente.nombre,
-              tipo: mov.cliente.tipo,
-            }
-          : null,
+        kardex: kardexConSaldo,
+        stockActual: saldoAcumulado,
+        totalMovimientos: kardex.length,
       };
     });
-
-    return {
-      producto: {
-        id: producto.id,
-        codigo: producto.codigo,
-        descripcion: producto.descripcion,
-        unidadMedida: producto.unidadMedida.nombre,
-      },
-      kardex: kardexConSaldo,
-      stockActual: saldoAcumulado,
-      totalMovimientos: kardex.length,
-    };
   }
 
   async findOne(id: number): Promise<Movimiento> {
-    const movimiento = await this.movimientoRepository.findOne({
-      where: { id },
-      relations: [
-        'producto',
-        'producto.unidadMedida',
-        'bodega',
-        'usuario',
-        'cliente',
-      ],
+    return this.executeWithTenant(async (manager) => {
+      const movimiento = await manager.getRepository(Movimiento).findOne({
+        where: { id },
+        relations: [
+          'producto',
+          'producto.unidadMedida',
+          'bodega',
+          'usuario',
+          'cliente',
+        ],
+      });
+
+      if (!movimiento) {
+        throw new NotFoundException(`Movimiento con ID ${id} no encontrado`);
+      }
+
+      return movimiento;
     });
-
-    if (!movimiento) {
-      throw new NotFoundException(`Movimiento con ID ${id} no encontrado`);
-    }
-
-    return movimiento;
   }
 
   async update(
@@ -551,7 +677,7 @@ export class MovimientosService {
     updateMovimientoDto: UpdateMovimientoDto,
   ): Promise<Movimiento> {
     const movimiento = await this.findOne(id);
-    const { cantidad, observacion } = updateMovimientoDto;
+    const { cantidad, precio, observacion } = updateMovimientoDto;
 
     // Si se actualiza la cantidad en una salida, validar stock
     if (
@@ -574,14 +700,19 @@ export class MovimientosService {
     }
 
     if (cantidad) movimiento.cantidad = cantidad;
+    if (precio !== undefined) movimiento.precio = precio;
     if (observacion !== undefined) movimiento.observacion = observacion;
 
-    return this.movimientoRepository.save(movimiento);
+    return this.executeWithTransaction(async (manager) => {
+      return manager.getRepository(Movimiento).save(movimiento);
+    });
   }
 
   async remove(id: number): Promise<void> {
     const movimiento = await this.findOne(id);
-    await this.movimientoRepository.remove(movimiento);
+    await this.executeWithTransaction(async (manager) => {
+      await manager.getRepository(Movimiento).remove(movimiento);
+    });
   }
 
   async generateExcelReport(queryDto: ExcelQueryDto): Promise<Buffer> {
@@ -771,44 +902,47 @@ export class MovimientosService {
   }
 
   private async getInventarioForExcel(queryDto: InventarioExcelQueryDto) {
-    let queryBuilder = this.movimientoRepository
-      .createQueryBuilder('movimiento')
-      .select([
-        'producto.codigo as "codigoProducto"',
-        'producto.descripcion as "descripcion"',
-        'bodega.nombre as "bodega"',
-        'unidadMedida.nombre as "medida"',
-        'SUM(CASE WHEN movimiento.tipo = \'entrada\' THEN movimiento.cantidad ELSE 0 END) as "entradas"',
-        'SUM(CASE WHEN movimiento.tipo = \'salida\' THEN movimiento.cantidad ELSE 0 END) as "salidas"',
-        'SUM(CASE WHEN movimiento.tipo = \'entrada\' THEN movimiento.cantidad ELSE -movimiento.cantidad END) as "stock"',
-      ])
-      .leftJoin('movimiento.producto', 'producto')
-      .leftJoin('producto.unidadMedida', 'unidadMedida')
-      .leftJoin('movimiento.bodega', 'bodega')
-      .groupBy(
-        'producto.codigo, producto.descripcion, bodega.nombre, unidadMedida.nombre',
-      )
-      .orderBy('producto.codigo', 'ASC')
-      .addOrderBy('bodega.nombre', 'ASC');
+    return this.executeWithTenant(async (manager) => {
+      let queryBuilder = manager
+        .getRepository(Movimiento)
+        .createQueryBuilder('movimiento')
+        .select([
+          'producto.codigo as "codigoProducto"',
+          'producto.descripcion as "descripcion"',
+          'bodega.nombre as "bodega"',
+          'unidadMedida.nombre as "medida"',
+          'SUM(CASE WHEN movimiento.tipo = \'entrada\' THEN movimiento.cantidad ELSE 0 END) as "entradas"',
+          'SUM(CASE WHEN movimiento.tipo = \'salida\' THEN movimiento.cantidad ELSE 0 END) as "salidas"',
+          'SUM(CASE WHEN movimiento.tipo = \'entrada\' THEN movimiento.cantidad ELSE -movimiento.cantidad END) as "stock"',
+        ])
+        .leftJoin('movimiento.producto', 'producto')
+        .leftJoin('producto.unidadMedida', 'unidadMedida')
+        .leftJoin('movimiento.bodega', 'bodega')
+        .groupBy(
+          'producto.codigo, producto.descripcion, bodega.nombre, unidadMedida.nombre',
+        )
+        .orderBy('producto.codigo', 'ASC')
+        .addOrderBy('bodega.nombre', 'ASC');
 
-    // Aplicar filtro de bodega si se especifica
-    if (queryDto.bodegaId) {
-      queryBuilder = queryBuilder.andWhere('bodega.id = :bodegaId', { 
-        bodegaId: queryDto.bodegaId 
-      });
-    }
+      // Aplicar filtro de bodega si se especifica
+      if (queryDto.bodegaId) {
+        queryBuilder = queryBuilder.andWhere('bodega.id = :bodegaId', {
+          bodegaId: queryDto.bodegaId
+        });
+      }
 
-    const resultado = await queryBuilder.getRawMany();
+      const resultado = await queryBuilder.getRawMany();
 
-    return resultado.map((item) => ({
-      'CODIGO PRODUCTO': item.codigoProducto,
-      'DESCRIPCION': item.descripcion,
-      'BODEGA': item.bodega,
-      'MEDIDA': item.medida || 'Sin unidad',
-      'ENTRADAS': parseFloat(item.entradas) || 0,
-      'SALIDAS': parseFloat(item.salidas) || 0,
-      'STOCK': parseFloat(item.stock) || 0,
-    }));
+      return resultado.map((item) => ({
+        'CODIGO PRODUCTO': item.codigoProducto,
+        'DESCRIPCION': item.descripcion,
+        'BODEGA': item.bodega,
+        'MEDIDA': item.medida || 'Sin unidad',
+        'ENTRADAS': parseFloat(item.entradas) || 0,
+        'SALIDAS': parseFloat(item.salidas) || 0,
+        'STOCK': parseFloat(item.stock) || 0,
+      }));
+    });
   }
 
   private createInventarioStyledWorksheet(data: any[], title: string, headerColor: string) {
@@ -961,78 +1095,94 @@ export class MovimientosService {
   }
 
   private async findAllForExcel(queryDto: ExcelQueryDto) {
-    const {
-      tipo,
-      productoId,
-      productoCodigo,
-      bodegaId,
-      clienteId,
-      fechaDesde,
-      fechaHasta,
-      usuarioId,
-    } = queryDto;
+    return this.executeWithTenant(async (manager) => {
+      const {
+        tipo,
+        productoId,
+        productoCodigo,
+        bodegaId,
+        clienteId,
+        fechaDesde,
+        fechaHasta,
+        usuarioId,
+      } = queryDto;
 
-    const queryBuilder = this.movimientoRepository
-      .createQueryBuilder('movimiento')
-      .leftJoinAndSelect('movimiento.producto', 'producto')
-      .leftJoinAndSelect('producto.unidadMedida', 'unidadMedida')
-      .leftJoinAndSelect('movimiento.bodega', 'bodega')
-      .leftJoinAndSelect('movimiento.usuario', 'usuario')
-      .leftJoinAndSelect('movimiento.cliente', 'cliente')
-      .orderBy('movimiento.fecha', 'DESC');
+      const queryBuilder = manager
+        .getRepository(Movimiento)
+        .createQueryBuilder('movimiento')
+        .leftJoinAndSelect('movimiento.producto', 'producto')
+        .leftJoinAndSelect('producto.unidadMedida', 'unidadMedida')
+        .leftJoinAndSelect('movimiento.bodega', 'bodega')
+        .leftJoinAndSelect('movimiento.usuario', 'usuario')
+        .leftJoinAndSelect('movimiento.cliente', 'cliente')
+        .orderBy('movimiento.fecha', 'DESC');
 
-    if (tipo) {
-      queryBuilder.andWhere('movimiento.tipo = :tipo', { tipo });
-    }
+      if (tipo) {
+        queryBuilder.andWhere('movimiento.tipo = :tipo', { tipo });
+      }
 
-    if (productoId) {
-      queryBuilder.andWhere('producto.id = :productoId', { productoId });
-    }
+      if (productoId) {
+        queryBuilder.andWhere('producto.id = :productoId', { productoId });
+      }
 
-    if (productoCodigo) {
-      queryBuilder.andWhere('producto.codigo ILIKE :productoCodigo', {
-        productoCodigo: `%${productoCodigo}%`,
-      });
-    }
+      if (productoCodigo) {
+        queryBuilder.andWhere('producto.codigo ILIKE :productoCodigo', {
+          productoCodigo: `%${productoCodigo}%`,
+        });
+      }
 
-    if (bodegaId) {
-      queryBuilder.andWhere('bodega.id = :bodegaId', { bodegaId });
-    }
+      if (bodegaId) {
+        queryBuilder.andWhere('bodega.id = :bodegaId', { bodegaId });
+      }
 
-    if (clienteId) {
-      queryBuilder.andWhere('cliente.id = :clienteId', { clienteId });
-    }
+      if (clienteId) {
+        queryBuilder.andWhere('cliente.id = :clienteId', { clienteId });
+      }
 
-    if (usuarioId) {
-      queryBuilder.andWhere('usuario.id = :usuarioId', { usuarioId });
-    }
+      if (usuarioId) {
+        queryBuilder.andWhere('usuario.id = :usuarioId', { usuarioId });
+      }
 
-    if (fechaDesde && fechaHasta) {
-      queryBuilder.andWhere(
-        'movimiento.fecha BETWEEN :fechaDesde AND :fechaHasta',
-        {
+      if (fechaDesde && fechaHasta) {
+        queryBuilder.andWhere(
+          'movimiento.fecha BETWEEN :fechaDesde AND :fechaHasta',
+          {
+            fechaDesde: new Date(fechaDesde),
+            fechaHasta: new Date(fechaHasta + ' 23:59:59'),
+          },
+        );
+      } else if (fechaDesde) {
+        queryBuilder.andWhere('movimiento.fecha >= :fechaDesde', {
           fechaDesde: new Date(fechaDesde),
+        });
+      } else if (fechaHasta) {
+        queryBuilder.andWhere('movimiento.fecha <= :fechaHasta', {
           fechaHasta: new Date(fechaHasta + ' 23:59:59'),
-        },
-      );
-    } else if (fechaDesde) {
-      queryBuilder.andWhere('movimiento.fecha >= :fechaDesde', {
-        fechaDesde: new Date(fechaDesde),
-      });
-    } else if (fechaHasta) {
-      queryBuilder.andWhere('movimiento.fecha <= :fechaHasta', {
-        fechaHasta: new Date(fechaHasta + ' 23:59:59'),
-      });
-    }
+        });
+      }
 
-    return await queryBuilder.getMany();
+      return await queryBuilder.getMany();
+    });
   }
 
   private async getStockProductoBodega(
     productoId: number,
     bodegaId: number,
   ): Promise<number> {
-    const result = await this.movimientoRepository
+    return this.executeWithTenant(async (manager) => {
+      return this.getStockProductoBodegaWithManager(manager, productoId, bodegaId);
+    });
+  }
+
+  // Método helper para usar dentro de transacciones
+  private async getStockProductoBodegaWithManager(
+    manager: any,
+    productoId: number,
+    bodegaId: number,
+  ): Promise<number> {
+    const movimientoRepository = manager.getRepository(Movimiento);
+
+    const result = await movimientoRepository
       .createQueryBuilder('movimiento')
       .select(
         "SUM(CASE WHEN movimiento.tipo = 'entrada' THEN movimiento.cantidad ELSE -movimiento.cantidad END)",

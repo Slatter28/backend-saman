@@ -6,9 +6,13 @@ import { Producto } from '../entities/producto.entity';
 import { Cliente } from '../entities/cliente.entity';
 import { Bodega } from '../entities/bodega.entity';
 import { Movimiento } from '../entities/movimiento.entity';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Producto, Cliente, Bodega, Movimiento])],
+  imports: [
+    TypeOrmModule.forFeature([Producto, Cliente, Bodega, Movimiento]),
+    AuthModule,
+  ],
   controllers: [DashboardController],
   providers: [DashboardService],
   exports: [DashboardService],

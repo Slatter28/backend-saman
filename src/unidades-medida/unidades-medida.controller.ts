@@ -23,7 +23,7 @@ import {
   UpdateUnidadMedidaDto,
   QueryUnidadMedidaDto,
 } from './dto';
-import { JwtAuthGuard, RolesGuard } from '../auth/guards';
+import { CustomJwtGuard, RolesGuard } from '../auth/guards';
 import { Roles } from '../auth/decorators';
 
 @ApiTags('unidades-medida')
@@ -32,8 +32,10 @@ export class UnidadesMedidaController {
   constructor(private readonly unidadesMedidaService: UnidadesMedidaService) {}
 
   @Get()
+  @UseGuards(CustomJwtGuard)
+  @ApiBearerAuth('JWT-auth')
   @ApiOperation({
-    summary: 'Obtener lista de unidades de medida con paginación y filtros',
+    summary: 'Obtener lista de unidades de medida con paginación y filtros ',
   })
   @ApiResponse({
     status: 200,
@@ -66,7 +68,9 @@ export class UnidadesMedidaController {
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Obtener una unidad de medida por ID' })
+  @UseGuards(CustomJwtGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Obtener una unidad de medida por ID ' })
   @ApiParam({
     name: 'id',
     description: 'ID de la unidad de medida',
@@ -90,7 +94,7 @@ export class UnidadesMedidaController {
   }
 
   @Post()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(CustomJwtGuard)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Crear una nueva unidad de medida' })
   @ApiResponse({
@@ -115,7 +119,7 @@ export class UnidadesMedidaController {
   }
 
   @Patch(':id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(CustomJwtGuard)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Actualizar una unidad de medida' })
   @ApiParam({
@@ -149,7 +153,7 @@ export class UnidadesMedidaController {
   }
 
   @Delete(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(CustomJwtGuard, RolesGuard)
   @Roles('admin')
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({

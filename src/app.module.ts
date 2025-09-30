@@ -1,7 +1,9 @@
-import { Module } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
+import { JwtModule } from '@nestjs/jwt';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { DataSource } from 'typeorm'; // 🆕 Importar DataSource
 import { Usuario } from './entities/usuario.entity';
 import { Producto } from './entities/producto.entity';
 import { Bodega } from './entities/bodega.entity';
@@ -16,6 +18,7 @@ import { BodegasModule } from './bodegas/bodegas.module';
 import { ClientesModule } from './clientes/clientes.module';
 import { MovimientosModule } from './movimientos/movimientos.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { TenantModule, TenantMiddleware } from './common/tenant';
 
 @Module({
   imports: [
@@ -30,10 +33,10 @@ import { DashboardModule } from './dashboard/dashboard.module';
       password: process.env.DB_PASSWORD,
       database: process.env.DB_NAME,
       ssl: {
-        rejectUnauthorized: false, // Para evitar problemas con certificados SSL en producción
+        rejectUnauthorized: false,
       },
       entities: [Usuario, Producto, Bodega, UnidadMedida, Movimiento, Cliente],
-      synchronize: process.env.NODE_ENV === 'development', // ⚠️ solo para desarrollo
+      synchronize: process.env.NODE_ENV === 'development',
       logging: process.env.NODE_ENV === 'development',
     }),
     TypeOrmModule.forFeature([
@@ -44,6 +47,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
       Movimiento,
       Cliente,
     ]),
+    TenantModule,
     AuthModule,
     ProductosModule,
     UnidadesMedidaModule,
@@ -53,6 +57,25 @@ import { DashboardModule } from './dashboard/dashboard.module';
     DashboardModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    // 🆕 Agregar proveedor DATA_SOURCE
+    {
+      provide: 'DATA_SOURCE',
+      useFactory: (dataSource: DataSource) => dataSource,
+      inject: [DataSource],
+    },
+  ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(TenantMiddleware)
+      .exclude(
+        'auth/login',
+        'auth/register',
+        'auth/create-test-user'
+      )
+      .forRoutes('*');
+  }
+}

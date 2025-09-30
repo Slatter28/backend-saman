@@ -7,10 +7,11 @@ import { AuthService } from '../auth.service';
 export interface JwtPayload {
   sub: number;
   correo: string;
+  bodegaId?: string;
 }
 
 @Injectable()
-export class JwtStrategy extends PassportStrategy(Strategy) {
+export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   constructor(
     private authService: AuthService,
     private configService: ConfigService,
@@ -18,15 +19,25 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: configService.get<string>('JWT_SECRET'),
+      secretOrKey: configService.get<string>('JWT_SECRET') || 'your-secret-key',
     });
+    console.log('🔐 JwtStrategy configurado correctamente');
   }
 
   async validate(payload: JwtPayload) {
-    const user = await this.authService.findById(payload.sub);
+    console.log('🔍 Validando payload JWT:', payload);
+    
+    const tenantId = payload.bodegaId || 'principal';
+    const user = await this.authService.findById(payload.sub, tenantId);
+    
     if (!user) {
       throw new UnauthorizedException('Token inválido');
     }
-    return user;
+    
+    // Agregar bodegaId al usuario para el request
+    return {
+      ...user,
+      bodegaId: tenantId
+    };
   }
 }

@@ -21,6 +21,9 @@ export class Movimiento {
   @Column({ type: 'numeric' })
   cantidad: number;
 
+  @Column({ type: 'numeric', default: 0 })
+  precio: number;
+
   @Column({ type: 'timestamp', default: () => 'NOW()' })
   fecha: Date;
 

@@ -36,6 +36,15 @@ export class CreateEntradaDto {
   @IsPositive()
   cantidad: number;
 
+  @ApiProperty({
+    description: 'Precio unitario del producto',
+    example: 25.50,
+  })
+  @IsNotEmpty()
+  @IsNumber()
+  @IsPositive()
+  precio: number;
+
   @ApiPropertyOptional({
     description: 'ID del cliente/proveedor (opcional)',
     example: 1,

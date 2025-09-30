@@ -7,10 +7,12 @@ import { Producto } from '../entities/producto.entity';
 import { Bodega } from '../entities/bodega.entity';
 import { Cliente } from '../entities/cliente.entity';
 import { Usuario } from '../entities/usuario.entity';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Movimiento, Producto, Bodega, Cliente, Usuario]),
+    AuthModule,
   ],
   controllers: [MovimientosController],
   providers: [MovimientosService],

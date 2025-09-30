@@ -3,21 +3,73 @@ import {
   NotFoundException,
   ConflictException,
   BadRequestException,
+  Inject,
+  Scope,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { REQUEST } from '@nestjs/core';
+import { Request } from 'express';
+import { InjectDataSource } from '@nestjs/typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { Producto } from '../entities/producto.entity';
 import { UnidadMedida } from '../entities/unidad-medida.entity';
 import { CreateProductoDto, UpdateProductoDto, QueryProductoDto } from './dto';
 
-@Injectable()
+@Injectable({ scope: Scope.REQUEST })
 export class ProductosService {
+  private tenantId: string;
+
   constructor(
-    @InjectRepository(Producto)
-    private readonly productoRepository: Repository<Producto>,
-    @InjectRepository(UnidadMedida)
-    private readonly unidadMedidaRepository: Repository<UnidadMedida>,
-  ) {}
+    @Inject(REQUEST) private request: Request,
+    @InjectDataSource() private dataSource: DataSource,
+  ) {
+    // Prioridad: usuario autenticado > middleware > por defecto
+    const userTenant = (request as any).user?.bodegaId;
+    const middlewareTenant = request.tenantId;
+
+    this.tenantId = userTenant || middlewareTenant || 'principal';
+    console.log(`🏢 ProductosService inicializado para tenant: ${this.tenantId}`);
+
+    if ((request as any).user) {
+      console.log(`👤 Usuario autenticado detectado: ${(request as any).user.correo} - Tenant: ${this.tenantId}`);
+    } else if (middlewareTenant) {
+      console.log(`🔧 Tenant desde middleware: ${this.tenantId}`);
+    } else {
+      console.log(`👤 Sin usuario autenticado, usando tenant por defecto: ${this.tenantId}`);
+    }
+  }
+
+  private getSchemaName(tenantId: string): string {
+    const schemaMap: Record<string, string> = {
+      'principal': 'inventario_principal',
+      'sucursal': 'inventario_sucursal',
+    };
+    return schemaMap[tenantId] || 'inventario_principal';
+  }
+
+  private async executeWithTenant<T>(
+    operation: (manager: any) => Promise<T>
+  ): Promise<T> {
+    const schemaName = this.getSchemaName(this.tenantId);
+    const queryRunner = this.dataSource.createQueryRunner();
+
+    try {
+      await queryRunner.connect();
+      await queryRunner.query(`SET search_path TO ${schemaName}, public`);
+      console.log(`🗄️ Ejecutando operación en esquema: ${schemaName}`);
+
+      // Pasar el EntityManager al callback
+      const result = await operation(queryRunner.manager);
+      return result;
+    } finally {
+      // 🔥 IMPORTANTE: Siempre liberar el QueryRunner
+      await queryRunner.release();
+      console.log(`✅ QueryRunner liberado para esquema: ${schemaName}`);
+    }
+  }
+
+  getCurrentTenant(): string {
+    return this.tenantId;
+  }
 
   async findAll(queryDto: QueryProductoDto) {
     const {
@@ -30,137 +82,191 @@ export class ProductosService {
 
     const skip = (page - 1) * limit;
 
-    const queryBuilder = this.productoRepository
-      .createQueryBuilder('producto')
-      .leftJoinAndSelect('producto.unidadMedida', 'unidadMedida')
-      .skip(skip)
-      .take(limit);
+    return this.executeWithTenant(async (manager) => {
+      const productoRepository = manager.getRepository(Producto);
 
-    if (codigo) {
-      queryBuilder.andWhere('producto.codigo ILIKE :codigo', {
-        codigo: `%${codigo}%`,
-      });
-    }
+      const queryBuilder = productoRepository
+        .createQueryBuilder('producto')
+        .leftJoinAndSelect('producto.unidadMedida', 'unidadMedida')
+        .skip(skip)
+        .take(limit);
 
-    if (descripcion) {
-      queryBuilder.andWhere('producto.descripcion ILIKE :descripcion', {
-        descripcion: `%${descripcion}%`,
-      });
-    }
+      if (codigo) {
+        queryBuilder.andWhere('producto.codigo ILIKE :codigo', {
+          codigo: `%${codigo}%`,
+        });
+      }
 
-    if (unidadMedidaId) {
-      queryBuilder.andWhere('producto.unidadMedida.id = :unidadMedidaId', {
-        unidadMedidaId,
-      });
-    }
+      if (descripcion) {
+        queryBuilder.andWhere('producto.descripcion ILIKE :descripcion', {
+          descripcion: `%${descripcion}%`,
+        });
+      }
 
-    const [productos, total] = await queryBuilder.getManyAndCount();
+      if (unidadMedidaId) {
+        queryBuilder.andWhere('producto.unidadMedida.id = :unidadMedidaId', {
+          unidadMedidaId,
+        });
+      }
 
-    return {
-      data: productos,
-      meta: {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
-      },
-    };
+      const [productos, total] = await queryBuilder.getManyAndCount();
+
+      console.log(`📦 Productos encontrados en ${this.getCurrentTenant()}: ${total}`);
+
+      return {
+        data: productos,
+        meta: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+        },
+      };
+    });
   }
 
   async findOne(id: number): Promise<Producto> {
-    const producto = await this.productoRepository.findOne({
-      where: { id },
-      relations: ['unidadMedida'],
+    return this.executeWithTenant(async (manager) => {
+      const productoRepository = manager.getRepository(Producto);
+
+      const producto = await productoRepository.findOne({
+        where: { id },
+        relations: ['unidadMedida'],
+      });
+
+      if (!producto) {
+        throw new NotFoundException(`Producto con ID ${id} no encontrado en ${this.getCurrentTenant()}`);
+      }
+
+      console.log(`📦 Producto encontrado en ${this.getCurrentTenant()}:`, producto.codigo);
+      return producto;
     });
-
-    if (!producto) {
-      throw new NotFoundException(`Producto con ID ${id} no encontrado`);
-    }
-
-    return producto;
   }
 
   async create(createProductoDto: CreateProductoDto): Promise<Producto> {
     const { codigo, descripcion, unidadMedidaId } = createProductoDto;
 
-    // Verificar si el código ya existe
-    const existingProduct = await this.productoRepository.findOne({
-      where: { codigo },
+    return this.executeWithTenant(async (manager) => {
+      const productoRepository = manager.getRepository(Producto);
+      const unidadMedidaRepository = manager.getRepository(UnidadMedida);
+
+      // Verificar si el código ya existe EN EL TENANT ACTUAL
+      const existingProduct = await productoRepository.findOne({
+        where: { codigo },
+      });
+
+      if (existingProduct) {
+        throw new ConflictException(`Producto con código '${codigo}' ya existe en ${this.getCurrentTenant()}`);
+      }
+
+      // Verificar que la unidad de medida existe EN EL TENANT ACTUAL
+      const unidadMedida = await unidadMedidaRepository.findOne({
+        where: { id: unidadMedidaId },
+      });
+
+      if (!unidadMedida) {
+        throw new BadRequestException(
+          `Unidad de medida con ID ${unidadMedidaId} no encontrada en ${this.getCurrentTenant()}`,
+        );
+      }
+
+      const producto = productoRepository.create({
+        codigo,
+        descripcion,
+        unidadMedida,
+      });
+
+      const savedProducto = await productoRepository.save(producto);
+
+      console.log(`✅ Producto creado en ${this.getCurrentTenant()}:`, savedProducto.codigo);
+
+      // Buscar y retornar el producto completo con relaciones
+      return productoRepository.findOne({
+        where: { id: savedProducto.id },
+        relations: ['unidadMedida'],
+      });
     });
-
-    if (existingProduct) {
-      throw new ConflictException(`Producto con código '${codigo}' ya existe`);
-    }
-
-    // Verificar que la unidad de medida existe
-    const unidadMedida = await this.unidadMedidaRepository.findOne({
-      where: { id: unidadMedidaId },
-    });
-
-    if (!unidadMedida) {
-      throw new BadRequestException(
-        `Unidad de medida con ID ${unidadMedidaId} no encontrada`,
-      );
-    }
-
-    const producto = this.productoRepository.create({
-      codigo,
-      descripcion,
-      unidadMedida,
-    });
-
-    const savedProducto = await this.productoRepository.save(producto);
-
-    return this.findOne(savedProducto.id);
   }
 
   async update(
     id: number,
     updateProductoDto: UpdateProductoDto,
   ): Promise<Producto> {
-    const producto = await this.findOne(id);
+    return this.executeWithTenant(async (manager) => {
+      const productoRepository = manager.getRepository(Producto);
+      const unidadMedidaRepository = manager.getRepository(UnidadMedida);
 
-    const { codigo, descripcion, unidadMedidaId } = updateProductoDto;
-
-    // Verificar si el nuevo código ya existe (si se está cambiando)
-    if (codigo && codigo !== producto.codigo) {
-      const existingProduct = await this.productoRepository.findOne({
-        where: { codigo },
+      // Buscar el producto existente
+      const producto = await productoRepository.findOne({
+        where: { id },
+        relations: ['unidadMedida'],
       });
 
-      if (existingProduct) {
-        throw new ConflictException(
-          `Producto con código '${codigo}' ya existe`,
-        );
+      if (!producto) {
+        throw new NotFoundException(`Producto con ID ${id} no encontrado en ${this.getCurrentTenant()}`);
       }
-    }
 
-    // Verificar que la nueva unidad de medida existe (si se está cambiando)
-    if (unidadMedidaId && unidadMedidaId !== producto.unidadMedida.id) {
-      const unidadMedida = await this.unidadMedidaRepository.findOne({
-        where: { id: unidadMedidaId },
+      const { codigo, descripcion, unidadMedidaId } = updateProductoDto;
+
+      // Verificar si el nuevo código ya existe EN EL TENANT ACTUAL (si se está cambiando)
+      if (codigo && codigo !== producto.codigo) {
+        const existingProduct = await productoRepository.findOne({
+          where: { codigo },
+        });
+
+        if (existingProduct) {
+          throw new ConflictException(
+            `Producto con código '${codigo}' ya existe en ${this.getCurrentTenant()}`,
+          );
+        }
+      }
+
+      // Verificar que la nueva unidad de medida existe EN EL TENANT ACTUAL (si se está cambiando)
+      if (unidadMedidaId && unidadMedidaId !== producto.unidadMedida.id) {
+        const unidadMedida = await unidadMedidaRepository.findOne({
+          where: { id: unidadMedidaId },
+        });
+
+        if (!unidadMedida) {
+          throw new BadRequestException(
+            `Unidad de medida con ID ${unidadMedidaId} no encontrada en ${this.getCurrentTenant()}`,
+          );
+        }
+
+        producto.unidadMedida = unidadMedida;
+      }
+
+      if (codigo) producto.codigo = codigo;
+      if (descripcion) producto.descripcion = descripcion;
+
+      await productoRepository.save(producto);
+
+      console.log(`✅ Producto actualizado en ${this.getCurrentTenant()}:`, producto.codigo);
+
+      // Retornar el producto actualizado con relaciones
+      return productoRepository.findOne({
+        where: { id },
+        relations: ['unidadMedida'],
       });
-
-      if (!unidadMedida) {
-        throw new BadRequestException(
-          `Unidad de medida con ID ${unidadMedidaId} no encontrada`,
-        );
-      }
-
-      producto.unidadMedida = unidadMedida;
-    }
-
-    if (codigo) producto.codigo = codigo;
-    if (descripcion) producto.descripcion = descripcion;
-
-    await this.productoRepository.save(producto);
-
-    return this.findOne(id);
+    });
   }
 
   async remove(id: number): Promise<void> {
-    const producto = await this.findOne(id);
+    return this.executeWithTenant(async (manager) => {
+      const productoRepository = manager.getRepository(Producto);
 
-    await this.productoRepository.remove(producto);
+      const producto = await productoRepository.findOne({
+        where: { id },
+        relations: ['unidadMedida'],
+      });
+
+      if (!producto) {
+        throw new NotFoundException(`Producto con ID ${id} no encontrado en ${this.getCurrentTenant()}`);
+      }
+
+      await productoRepository.remove(producto);
+
+      console.log(`🗑️ Producto eliminado de ${this.getCurrentTenant()}:`, producto.codigo);
+    });
   }
 }

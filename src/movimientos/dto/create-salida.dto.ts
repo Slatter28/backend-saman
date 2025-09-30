@@ -37,6 +37,14 @@ export class CreateSalidaDto {
   cantidad: number;
 
   @ApiPropertyOptional({
+    description: 'Precio unitario del producto (opcional, por defecto 0)',
+    example: 0,
+  })
+  @IsOptional()
+  @IsNumber()
+  precio?: number;
+
+  @ApiPropertyOptional({
     description: 'ID del cliente (opcional)',
     example: 1,
   })

@@ -19,7 +19,7 @@ import {
 } from '@nestjs/swagger';
 import { ProductosService } from './productos.service';
 import { CreateProductoDto, UpdateProductoDto, QueryProductoDto } from './dto';
-import { JwtAuthGuard } from '../auth/guards';
+import { CustomJwtGuard } from '../auth/guards';
 
 @ApiTags('productos')
 @Controller('productos')
@@ -27,9 +27,11 @@ export class ProductosController {
   constructor(private readonly productosService: ProductosService) {}
 
   @Get()
+  @UseGuards(CustomJwtGuard)
   @ApiOperation({
-    summary: 'Obtener lista de productos con paginación y filtros',
+    summary: 'Obtener lista de productos con paginación y filtros ',
   })
+  @ApiBearerAuth('JWT-auth')
   @ApiResponse({
     status: 200,
     description: 'Lista de productos obtenida exitosamente',
@@ -62,7 +64,9 @@ export class ProductosController {
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Obtener un producto por ID' })
+  @UseGuards(CustomJwtGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Obtener un producto por ID ' })
   @ApiParam({
     name: 'id',
     description: 'ID del producto',
@@ -91,7 +95,7 @@ export class ProductosController {
   }
 
   @Post()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(CustomJwtGuard)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Crear un nuevo producto' })
   @ApiResponse({
@@ -122,7 +126,7 @@ export class ProductosController {
   }
 
   @Patch(':id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(CustomJwtGuard)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Actualizar un producto' })
   @ApiParam({
@@ -162,7 +166,7 @@ export class ProductosController {
   }
 
   @Delete(':id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(CustomJwtGuard)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Eliminar un producto' })
   @ApiParam({

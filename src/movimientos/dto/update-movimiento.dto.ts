@@ -18,6 +18,14 @@ export class UpdateMovimientoDto {
   cantidad?: number;
 
   @ApiPropertyOptional({
+    description: 'Nuevo precio unitario',
+    example: 30.00,
+  })
+  @IsOptional()
+  @IsNumber()
+  precio?: number;
+
+  @ApiPropertyOptional({
     description: 'Nuevas observaciones',
     example: 'Movimiento actualizado',
     maxLength: 500,

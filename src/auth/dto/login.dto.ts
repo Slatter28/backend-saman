@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsString, IsOptional, IsEnum } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class LoginDto {
@@ -16,4 +16,17 @@ export class LoginDto {
   @IsNotEmpty()
   @IsString()
   contrasena: string;
+
+  // 🆕 NUEVO CAMPO
+  @ApiProperty({
+    description: 'ID de la bodega a la que desea acceder',
+    enum: ['principal', 'sucursal'],
+    example: 'principal',
+    required: false,
+  })
+  @IsOptional()
+  @IsEnum(['principal', 'sucursal'], {
+    message: 'La bodega debe ser principal o sucursal',
+  })
+  bodegaId?: string;
 }

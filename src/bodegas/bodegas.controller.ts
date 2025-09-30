@@ -19,7 +19,7 @@ import {
 } from '@nestjs/swagger';
 import { BodegasService } from './bodegas.service';
 import { CreateBodegaDto, UpdateBodegaDto, QueryBodegaDto } from './dto';
-import { JwtAuthGuard, RolesGuard } from '../auth/guards';
+import { CustomJwtGuard, RolesGuard } from '../auth/guards';
 import { Roles } from '../auth/decorators';
 
 @ApiTags('bodegas')
@@ -28,8 +28,10 @@ export class BodegasController {
   constructor(private readonly bodegasService: BodegasService) {}
 
   @Get()
+  @UseGuards(CustomJwtGuard)
+  @ApiBearerAuth('JWT-auth')
   @ApiOperation({
-    summary: 'Obtener lista de bodegas con paginación y filtros',
+    summary: 'Obtener lista de bodegas con paginación y filtros ',
   })
   @ApiResponse({
     status: 200,
@@ -62,7 +64,9 @@ export class BodegasController {
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Obtener una bodega por ID' })
+  @UseGuards(CustomJwtGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Obtener una bodega por ID ' })
   @ApiParam({
     name: 'id',
     description: 'ID de la bodega',
@@ -86,7 +90,9 @@ export class BodegasController {
   }
 
   @Get(':id/inventario')
-  @ApiOperation({ summary: 'Obtener inventario de una bodega' })
+  @UseGuards(CustomJwtGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Obtener inventario de una bodega ' })
   @ApiParam({
     name: 'id',
     description: 'ID de la bodega',
@@ -123,7 +129,7 @@ export class BodegasController {
   }
 
   @Post()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(CustomJwtGuard)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Crear una nueva bodega' })
   @ApiResponse({
@@ -145,7 +151,7 @@ export class BodegasController {
   }
 
   @Patch(':id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(CustomJwtGuard)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Actualizar una bodega' })
   @ApiParam({
@@ -176,7 +182,7 @@ export class BodegasController {
   }
 
   @Delete(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(CustomJwtGuard, RolesGuard)
   @Roles('admin')
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Eliminar una bodega (solo administradores)' })

@@ -4,6 +4,7 @@ import {
   IsNotEmpty,
   IsString,
   MinLength,
+  IsOptional,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -42,4 +43,17 @@ export class RegisterDto {
     message: 'El rol debe ser admin o bodeguero',
   })
   rol: 'admin' | 'bodeguero';
+
+  // 🆕 NUEVO CAMPO
+  @ApiProperty({
+    description: 'ID de la bodega a la que pertenece el usuario',
+    enum: ['principal', 'sucursal'],
+    example: 'principal',
+    required: false,
+  })
+  @IsOptional()
+  @IsEnum(['principal', 'sucursal'], {
+    message: 'La bodega debe ser principal o sucursal',
+  })
+  bodegaId?: string;
 }

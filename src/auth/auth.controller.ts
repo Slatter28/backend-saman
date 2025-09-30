@@ -17,7 +17,7 @@ import {
 } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { RegisterDto, LoginDto } from './dto';
-import { LocalAuthGuard, JwtAuthGuard, RolesGuard } from './guards';
+import { CustomJwtGuard, RolesGuard } from './guards';
 import { CurrentUser, Roles } from './decorators';
 import { Usuario } from '../entities/usuario.entity';
 
@@ -39,6 +39,7 @@ export class AuthController {
           nombre: 'Juan Pérez',
           correo: 'juan.perez@email.com',
           rol: 'bodeguero',
+          bodegaId: 'principal',
           creadoEn: '2024-01-15T10:30:00.000Z',
         },
         access_token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
@@ -50,7 +51,7 @@ export class AuthController {
     return this.authService.register(registerDto);
   }
 
-  @UseGuards(LocalAuthGuard)
+  // 🔧 QUITAR LocalAuthGuard del login
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Iniciar sesión' })
@@ -65,6 +66,7 @@ export class AuthController {
           nombre: 'Juan Pérez',
           correo: 'juan.perez@email.com',
           rol: 'bodeguero',
+          bodegaId: 'principal',
           creadoEn: '2024-01-15T10:30:00.000Z',
         },
         access_token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
@@ -72,11 +74,11 @@ export class AuthController {
     },
   })
   @ApiResponse({ status: 401, description: 'Credenciales inválidas' })
-  async login(@Request() req, @Body() loginDto: LoginDto) {
+  async login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(CustomJwtGuard)
   @Get('profile')
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Obtener perfil del usuario autenticado' })
@@ -89,6 +91,7 @@ export class AuthController {
         nombre: 'Juan Pérez',
         correo: 'juan.perez@email.com',
         rol: 'bodeguero',
+        bodegaId: 'principal',
         creadoEn: '2024-01-15T10:30:00.000Z',
       },
     },
@@ -100,7 +103,7 @@ export class AuthController {
     return result;
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(CustomJwtGuard)
   @Get('validate')
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth('JWT-auth')
@@ -116,6 +119,7 @@ export class AuthController {
           nombre: 'Juan Pérez',
           correo: 'juan.perez@email.com',
           rol: 'bodeguero',
+          bodegaId: 'principal',
           creadoEn: '2024-01-15T10:30:00.000Z',
         },
       },
@@ -138,7 +142,7 @@ export class AuthController {
     return this.authService.createTestUser();
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(CustomJwtGuard, RolesGuard)
   @Roles('admin')
   @Get('admin-only')
   @ApiBearerAuth('JWT-auth')
