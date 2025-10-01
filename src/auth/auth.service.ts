@@ -141,6 +141,11 @@ export class AuthService {
       throw new UnauthorizedException('Credenciales inválidas');
     }
 
+    // Validar que el usuario esté activo
+    if (!usuario.estado) {
+      throw new UnauthorizedException('Usuario inactivo. Contacte al administrador');
+    }
+
     // Validar la contraseña
     const isPasswordValid = await bcryptjs.compare(contrasena, usuario.contrasena);
 
@@ -232,6 +237,111 @@ export class AuthService {
         },
       };
     }, 'principal');
+  }
+
+  async findAll(page: number = 1, limit: number = 10, tenantId: string = 'principal') {
+    return this.executeWithTenant(async (usuarioRepository) => {
+      const skip = (page - 1) * limit;
+
+      const [usuarios, total] = await usuarioRepository.findAndCount({
+        skip,
+        take: limit,
+        order: {
+          creadoEn: 'DESC',
+        },
+      });
+
+      // Remover contraseñas del resultado
+      const usuariosSinContrasena = usuarios.map(usuario => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { contrasena, ...result } = usuario;
+        return result;
+      });
+
+      return {
+        data: usuariosSinContrasena,
+        meta: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+        },
+      };
+    }, tenantId);
+  }
+
+  async update(id: number, updateData: Partial<Usuario>, tenantId: string = 'principal') {
+    return this.executeWithTenant(async (usuarioRepository) => {
+      const usuario = await usuarioRepository.findOne({ where: { id } });
+
+      if (!usuario) {
+        throw new UnauthorizedException('Usuario no encontrado');
+      }
+
+      // Si se actualiza la contraseña, TypeORM se encargará del hash automáticamente
+      // gracias a @BeforeUpdate en la entidad Usuario
+      Object.assign(usuario, updateData);
+
+      const updatedUser = await usuarioRepository.save(usuario);
+
+      // Remover la contraseña del resultado
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { contrasena, ...result } = updatedUser;
+      return result;
+    }, tenantId);
+  }
+
+  async toggleEstado(id: number, estado: boolean, tenantId: string = 'principal') {
+    return this.executeWithTenant(async (usuarioRepository) => {
+      const usuario = await usuarioRepository.findOne({ where: { id } });
+
+      if (!usuario) {
+        throw new UnauthorizedException('Usuario no encontrado');
+      }
+
+      usuario.estado = estado;
+      const updatedUser = await usuarioRepository.save(usuario);
+
+      // Remover la contraseña del resultado
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { contrasena, ...result } = updatedUser;
+      return result;
+    }, tenantId);
+  }
+
+  async cambiarContrasena(id: number, nuevaContrasena: string, tenantId: string = 'principal') {
+    return this.executeWithTenant(async (usuarioRepository) => {
+      const usuario = await usuarioRepository.findOne({ where: { id } });
+
+      if (!usuario) {
+        throw new UnauthorizedException('Usuario no encontrado');
+      }
+
+      usuario.contrasena = nuevaContrasena;
+      const updatedUser = await usuarioRepository.save(usuario);
+
+      // Remover la contraseña del resultado
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { contrasena, ...result } = updatedUser;
+      return result;
+    }, tenantId);
+  }
+
+  async delete(id: number, tenantId: string = 'principal') {
+    return this.executeWithTenant(async (usuarioRepository) => {
+      const usuario = await usuarioRepository.findOne({ where: { id } });
+
+      if (!usuario) {
+        throw new UnauthorizedException('Usuario no encontrado');
+      }
+
+      await usuarioRepository.remove(usuario);
+
+      return {
+        message: 'Usuario eliminado exitosamente',
+        id,
+      };
+    }, tenantId);
   }
 
   private generateJwtToken(usuario: { id: number; correo: string; bodegaId?: string }): string {

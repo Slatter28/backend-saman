@@ -31,6 +31,9 @@ export class Usuario {
   @Column({ name: 'bodega_id', default: 'principal' })
   bodegaId: string;
 
+  @Column({ default: true })
+  estado: boolean;
+
   @CreateDateColumn()
   creadoEn: Date;
 

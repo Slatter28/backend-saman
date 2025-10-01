@@ -1,50 +1,55 @@
 import {
   IsEmail,
   IsEnum,
-  IsNotEmpty,
   IsString,
   MinLength,
   IsOptional,
+  IsBoolean,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
-export class RegisterDto {
+export class UpdateUserDto {
   @ApiProperty({
     description: 'Nombre completo del usuario',
     example: 'Juan Pérez',
+    required: false,
   })
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
-  nombre: string;
+  nombre?: string;
 
   @ApiProperty({
     description: 'Correo electrónico del usuario',
     example: 'juan.perez@email.com',
+    required: false,
   })
+  @IsOptional()
   @IsEmail()
-  correo: string;
+  correo?: string;
 
   @ApiProperty({
     description: 'Contraseña del usuario (mínimo 6 caracteres)',
     example: 'password123',
     minLength: 6,
+    required: false,
   })
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
   @MinLength(6, { message: 'La contraseña debe tener al menos 6 caracteres' })
-  contrasena: string;
+  contrasena?: string;
 
   @ApiProperty({
     description: 'Rol del usuario en el sistema',
     enum: ['admin', 'bodeguero'],
     example: 'bodeguero',
+    required: false,
   })
+  @IsOptional()
   @IsEnum(['admin', 'bodeguero'], {
     message: 'El rol debe ser admin o bodeguero',
   })
-  rol: 'admin' | 'bodeguero';
+  rol?: 'admin' | 'bodeguero';
 
-  // 🆕 NUEVO CAMPO
   @ApiProperty({
     description: 'ID de la bodega a la que pertenece el usuario',
     enum: ['principal', 'sucursal'],
@@ -55,14 +60,14 @@ export class RegisterDto {
   @IsEnum(['principal', 'sucursal'], {
     message: 'La bodega debe ser principal o sucursal',
   })
-  bodegaId?: string;
+  bodegaId?: 'principal' | 'sucursal';
 
   @ApiProperty({
     description: 'Estado del usuario (activo/inactivo)',
     example: true,
     required: false,
-    default: true,
   })
   @IsOptional()
+  @IsBoolean()
   estado?: boolean;
 }
