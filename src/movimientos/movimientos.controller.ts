@@ -21,6 +21,8 @@ import {
   QueryMovimientoDto,
   ExcelQueryDto,
   InventarioExcelQueryDto,
+  DividirProductoDto,
+  CrearComboDto,
 } from './dto';
 import { CustomJwtGuard } from '../auth/guards/custom-jwt.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -75,6 +77,94 @@ export class MovimientosController {
   @ApiResponse({ status: 403, description: 'Sin permisos' })
   async createSalida(@Body() createSalidaDto: CreateSalidaDto, @Request() req) {
     return this.movimientosService.createSalida(createSalidaDto, req.user.sub);
+  }
+
+  @Post('dividir')
+  @Roles('admin', 'bodeguero')
+  @ApiOperation({
+    summary: 'Dividir producto combo en múltiples productos destino',
+  })
+  @ApiResponse({
+    status: 201,
+    description:
+      'División completada: 1 salida del producto origen y N entradas en productos destino',
+    schema: {
+      type: 'object',
+      properties: {
+        salida: {
+          type: 'object',
+          description: 'Movimiento de salida del producto origen',
+        },
+        entradas: {
+          type: 'array',
+          description: 'Lista de movimientos de entrada en productos destino',
+        },
+        mensaje: {
+          type: 'string',
+          example:
+            'División completada: Se descontaron 50 unidades de PROD001 y se agregaron 3 productos destino',
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Stock insuficiente o datos inválidos',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Producto origen, productos destino o bodega no encontrados',
+  })
+  @ApiResponse({ status: 403, description: 'Sin permisos' })
+  async dividirProducto(
+    @Body() dividirProductoDto: DividirProductoDto,
+    @Request() req,
+  ) {
+    return this.movimientosService.dividirProducto(
+      dividirProductoDto,
+      req.user.sub,
+    );
+  }
+
+  @Post('crear-combo')
+  @Roles('admin', 'bodeguero')
+  @ApiOperation({
+    summary: 'Crear combo desde ingredientes (N salidas + 1 entrada)',
+  })
+  @ApiResponse({
+    status: 201,
+    description:
+      'Combo creado: N salidas de ingredientes y 1 entrada del producto combo',
+    schema: {
+      type: 'object',
+      properties: {
+        salidas: {
+          type: 'array',
+          description: 'Lista de movimientos de salida de ingredientes',
+        },
+        entrada: {
+          type: 'object',
+          description: 'Movimiento de entrada del producto combo',
+        },
+        mensaje: {
+          type: 'string',
+          example:
+            'Combo creado exitosamente: Se descontaron 2 ingredientes y se agregaron 4 unidades de COMBO-RES',
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Stock insuficiente de ingredientes o datos inválidos',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Producto combo, ingredientes o bodega no encontrados',
+  })
+  @ApiResponse({ status: 403, description: 'Sin permisos' })
+  async crearCombo(@Body() crearComboDto: CrearComboDto, @Request() req) {
+    return this.movimientosService.crearCombo(crearComboDto, req.user.sub);
   }
 
   @Get('excel')

@@ -22,6 +22,8 @@ import {
   QueryMovimientoDto,
   ExcelQueryDto,
   InventarioExcelQueryDto,
+  DividirProductoDto,
+  CrearComboDto,
 } from './dto';
 
 @Injectable({ scope: Scope.REQUEST })
@@ -1193,5 +1195,334 @@ export class MovimientosService {
       .getRawOne();
 
     return parseFloat(result.stock) || 0;
+  }
+
+  async dividirProducto(
+    dividirProductoDto: DividirProductoDto,
+    userId: number,
+  ): Promise<{
+    salida: Movimiento;
+    entradas: Movimiento[];
+    mensaje: string;
+  }> {
+    const {
+      productoOrigenId,
+      bodegaId,
+      cantidadTotal,
+      productosDestino,
+    } = dividirProductoDto;
+
+    return this.executeWithTransaction(async (manager) => {
+      const productoRepository = manager.getRepository(Producto);
+      const bodegaRepository = manager.getRepository(Bodega);
+      const usuarioRepository = manager.getRepository(Usuario);
+      const movimientoRepository = manager.getRepository(Movimiento);
+
+      // 1. Validar que el producto origen existe
+      const productoOrigen = await productoRepository.findOne({
+        where: { id: productoOrigenId },
+        relations: ['unidadMedida'],
+      });
+      if (!productoOrigen) {
+        throw new NotFoundException(
+          `Producto origen con ID ${productoOrigenId} no encontrado en ${this.getCurrentTenant()}`,
+        );
+      }
+
+      // 2. Validar que la bodega existe
+      const bodega = await bodegaRepository.findOne({
+        where: { id: bodegaId },
+      });
+      if (!bodega) {
+        throw new NotFoundException(
+          `Bodega con ID ${bodegaId} no encontrada en ${this.getCurrentTenant()}`,
+        );
+      }
+
+      // 3. Validar que el usuario existe
+      const usuario = await usuarioRepository.findOne({
+        where: { id: userId },
+      });
+      if (!usuario) {
+        throw new NotFoundException(
+          `Usuario con ID ${userId} no encontrado en ${this.getCurrentTenant()}`,
+        );
+      }
+
+      // 4. Validar stock disponible del producto origen
+      const stockDisponible = await this.getStockProductoBodegaWithManager(
+        manager,
+        productoOrigenId,
+        bodegaId,
+      );
+      if (stockDisponible < cantidadTotal) {
+        throw new BadRequestException(
+          `Stock insuficiente del producto origen. Stock disponible: ${stockDisponible}, solicitado: ${cantidadTotal}`,
+        );
+      }
+
+      // 5. Validar que los productos destino existen
+      const productosDestinoValidados = [];
+      for (const destino of productosDestino) {
+        const producto = await productoRepository.findOne({
+          where: { id: destino.productoId },
+          relations: ['unidadMedida'],
+        });
+        if (!producto) {
+          throw new NotFoundException(
+            `Producto destino con ID ${destino.productoId} no encontrado en ${this.getCurrentTenant()}`,
+          );
+        }
+        productosDestinoValidados.push({
+          producto,
+          cantidad: destino.cantidad,
+        });
+      }
+
+      // 6. Crear la salida del producto origen
+      const movimientoSalida = movimientoRepository.create({
+        tipo: 'salida',
+        cantidad: cantidadTotal,
+        precio: 0,
+        observacion: `División de producto combo - ${productosDestino.length} productos destino`,
+        producto: productoOrigen,
+        bodega,
+        usuario,
+        cliente: null,
+      });
+
+      const salidaGuardada = await movimientoRepository.save(movimientoSalida);
+
+      console.log(
+        `🔄 División: Salida de ${cantidadTotal} ${productoOrigen.codigo} en ${bodega.nombre}`,
+      );
+
+      // 7. Crear las entradas de los productos destino
+      const entradasGuardadas: Movimiento[] = [];
+      for (const destino of productosDestinoValidados) {
+        const movimientoEntrada = movimientoRepository.create({
+          tipo: 'entrada',
+          cantidad: destino.cantidad,
+          precio: 0,
+          observacion: `División desde producto combo ${productoOrigen.codigo} (ID: ${productoOrigenId})`,
+          producto: destino.producto,
+          bodega,
+          usuario,
+          cliente: null,
+        });
+
+        const entradaGuardada = await movimientoRepository.save(
+          movimientoEntrada,
+        );
+        entradasGuardadas.push(entradaGuardada);
+
+        console.log(
+          `🔄 División: Entrada de ${destino.cantidad} ${destino.producto.codigo} en ${bodega.nombre}`,
+        );
+      }
+
+      // 8. Cargar las relaciones completas para la respuesta
+      const salidaCompleta = await movimientoRepository.findOne({
+        where: { id: salidaGuardada.id },
+        relations: [
+          'producto',
+          'producto.unidadMedida',
+          'bodega',
+          'usuario',
+          'cliente',
+        ],
+      });
+
+      const entradasCompletas = await Promise.all(
+        entradasGuardadas.map((entrada) =>
+          movimientoRepository.findOne({
+            where: { id: entrada.id },
+            relations: [
+              'producto',
+              'producto.unidadMedida',
+              'bodega',
+              'usuario',
+              'cliente',
+            ],
+          }),
+        ),
+      );
+
+      console.log(
+        `✅ División completada: 1 salida + ${entradasCompletas.length} entradas en ${this.getCurrentTenant()}`,
+      );
+
+      return {
+        salida: salidaCompleta,
+        entradas: entradasCompletas,
+        mensaje: `División completada: Se descontaron ${cantidadTotal} unidades de ${productoOrigen.codigo} y se agregaron ${productosDestino.length} productos destino`,
+      };
+    });
+  }
+
+  async crearCombo(
+    crearComboDto: CrearComboDto,
+    userId: number,
+  ): Promise<{
+    salidas: Movimiento[];
+    entrada: Movimiento;
+    mensaje: string;
+  }> {
+    const { bodegaId, productoComboId, ingredientes } = crearComboDto;
+
+    return this.executeWithTransaction(async (manager) => {
+      const productoRepository = manager.getRepository(Producto);
+      const bodegaRepository = manager.getRepository(Bodega);
+      const usuarioRepository = manager.getRepository(Usuario);
+      const movimientoRepository = manager.getRepository(Movimiento);
+
+      // 1. Validar que la bodega existe
+      const bodega = await bodegaRepository.findOne({
+        where: { id: bodegaId },
+      });
+      if (!bodega) {
+        throw new NotFoundException(
+          `Bodega con ID ${bodegaId} no encontrada en ${this.getCurrentTenant()}`,
+        );
+      }
+
+      // 2. Validar que el usuario existe
+      const usuario = await usuarioRepository.findOne({
+        where: { id: userId },
+      });
+      if (!usuario) {
+        throw new NotFoundException(
+          `Usuario con ID ${userId} no encontrado en ${this.getCurrentTenant()}`,
+        );
+      }
+
+      // 3. Validar que el producto combo existe
+      const productoCombo = await productoRepository.findOne({
+        where: { id: productoComboId },
+        relations: ['unidadMedida'],
+      });
+      if (!productoCombo) {
+        throw new NotFoundException(
+          `Producto combo con ID ${productoComboId} no encontrado en ${this.getCurrentTenant()}`,
+        );
+      }
+
+      // 4. Validar que todos los ingredientes existen y tienen stock suficiente
+      const ingredientesValidados = [];
+      let cantidadTotalCombo = 0;
+
+      for (const ingrediente of ingredientes) {
+        const producto = await productoRepository.findOne({
+          where: { id: ingrediente.productoId },
+          relations: ['unidadMedida'],
+        });
+        if (!producto) {
+          throw new NotFoundException(
+            `Ingrediente con ID ${ingrediente.productoId} no encontrado en ${this.getCurrentTenant()}`,
+          );
+        }
+
+        // Validar stock disponible del ingrediente
+        const stockDisponible = await this.getStockProductoBodegaWithManager(
+          manager,
+          ingrediente.productoId,
+          bodegaId,
+        );
+        if (stockDisponible < ingrediente.cantidad) {
+          throw new BadRequestException(
+            `Stock insuficiente del ingrediente ${producto.codigo}. Stock disponible: ${stockDisponible}, solicitado: ${ingrediente.cantidad}`,
+          );
+        }
+
+        ingredientesValidados.push({
+          producto,
+          cantidad: ingrediente.cantidad,
+        });
+
+        // Sumar las cantidades para saber cuánto combo se creará
+        cantidadTotalCombo += ingrediente.cantidad;
+      }
+
+      // 5. Crear las salidas de los ingredientes
+      const salidasGuardadas: Movimiento[] = [];
+      for (const ingrediente of ingredientesValidados) {
+        const movimientoSalida = movimientoRepository.create({
+          tipo: 'salida',
+          cantidad: ingrediente.cantidad,
+          precio: 0,
+          observacion: `Ingrediente para crear combo ${productoCombo.codigo} (ID: ${productoComboId})`,
+          producto: ingrediente.producto,
+          bodega,
+          usuario,
+          cliente: null,
+        });
+
+        const salidaGuardada = await movimientoRepository.save(
+          movimientoSalida,
+        );
+        salidasGuardadas.push(salidaGuardada);
+
+        console.log(
+          `🔄 Combo: Salida de ${ingrediente.cantidad} ${ingrediente.producto.codigo} en ${bodega.nombre}`,
+        );
+      }
+
+      // 6. Crear la entrada del producto combo
+      const movimientoEntrada = movimientoRepository.create({
+        tipo: 'entrada',
+        cantidad: cantidadTotalCombo,
+        precio: 0,
+        observacion: `Combo creado desde ${ingredientes.length} ingredientes`,
+        producto: productoCombo,
+        bodega,
+        usuario,
+        cliente: null,
+      });
+
+      const entradaGuardada = await movimientoRepository.save(
+        movimientoEntrada,
+      );
+
+      console.log(
+        `🔄 Combo: Entrada de ${cantidadTotalCombo} ${productoCombo.codigo} en ${bodega.nombre}`,
+      );
+
+      // 7. Cargar las relaciones completas para la respuesta
+      const salidasCompletas = await Promise.all(
+        salidasGuardadas.map((salida) =>
+          movimientoRepository.findOne({
+            where: { id: salida.id },
+            relations: [
+              'producto',
+              'producto.unidadMedida',
+              'bodega',
+              'usuario',
+              'cliente',
+            ],
+          }),
+        ),
+      );
+
+      const entradaCompleta = await movimientoRepository.findOne({
+        where: { id: entradaGuardada.id },
+        relations: [
+          'producto',
+          'producto.unidadMedida',
+          'bodega',
+          'usuario',
+          'cliente',
+        ],
+      });
+
+      console.log(
+        `✅ Combo creado: ${salidasCompletas.length} salidas + 1 entrada de ${cantidadTotalCombo} unidades en ${this.getCurrentTenant()}`,
+      );
+
+      return {
+        salidas: salidasCompletas,
+        entrada: entradaCompleta,
+        mensaje: `Combo creado exitosamente: Se descontaron ${ingredientes.length} ingredientes y se agregaron ${cantidadTotalCombo} unidades de ${productoCombo.codigo}`,
+      };
+    });
   }
 }
