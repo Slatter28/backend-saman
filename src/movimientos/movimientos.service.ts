@@ -1525,4 +1525,348 @@ export class MovimientosService {
       };
     });
   }
+
+  async generatePlantillaExcel(): Promise<Buffer> {
+    return this.executeWithTenant(async (manager) => {
+      const productoRepository = manager.getRepository(Producto);
+      const bodegaRepository = manager.getRepository(Bodega);
+      const clienteRepository = manager.getRepository(Cliente);
+
+      // Obtener todos los productos, bodegas y clientes del tenant actual
+      const productos = await productoRepository.find({
+        relations: ['unidadMedida'],
+        order: { codigo: 'ASC' },
+      });
+
+      const bodegas = await bodegaRepository.find({
+        order: { nombre: 'ASC' },
+      });
+
+      const clientes = await clienteRepository.find({
+        order: { nombre: 'ASC' },
+      });
+
+      const workbook = XLSX.utils.book_new();
+
+      // 1. Hoja de PLANTILLA MOVIMIENTOS (donde llenarán los datos)
+      const plantillaData = [
+        {
+          'TIPO': 'entrada',
+          'CODIGO PRODUCTO': productos[0]?.codigo || 'PROD-001',
+          'CANTIDAD': 10,
+          'PRECIO': 100,
+          'ID BODEGA': bodegas[0]?.id || 1,
+          'ID CLIENTE': clientes[0]?.id || '',
+          'OBSERVACION': 'Ejemplo de entrada',
+        },
+        {
+          'TIPO': 'salida',
+          'CODIGO PRODUCTO': productos[0]?.codigo || 'PROD-001',
+          'CANTIDAD': 5,
+          'PRECIO': 0,
+          'ID BODEGA': bodegas[0]?.id || 1,
+          'ID CLIENTE': clientes[1]?.id || '',
+          'OBSERVACION': 'Ejemplo de salida',
+        },
+      ];
+
+      const plantillaSheet = XLSX.utils.json_to_sheet(plantillaData);
+
+      // Configurar anchos de columnas
+      plantillaSheet['!cols'] = [
+        { wch: 12 },  // TIPO
+        { wch: 20 },  // CODIGO PRODUCTO
+        { wch: 12 },  // CANTIDAD
+        { wch: 12 },  // PRECIO
+        { wch: 15 },  // ID BODEGA
+        { wch: 15 },  // ID CLIENTE
+        { wch: 40 },  // OBSERVACION
+      ];
+
+      XLSX.utils.book_append_sheet(workbook, plantillaSheet, 'PLANTILLA');
+
+      // 2. Hoja de PRODUCTOS (catálogo de referencia)
+      const productosData = productos.map((p) => ({
+        'CODIGO': p.codigo,
+        'DESCRIPCION': p.descripcion,
+        'UNIDAD MEDIDA': p.unidadMedida?.nombre || 'Sin unidad',
+      }));
+
+      const productosSheet = XLSX.utils.json_to_sheet(productosData);
+      productosSheet['!cols'] = [
+        { wch: 20 },  // CODIGO
+        { wch: 50 },  // DESCRIPCION
+        { wch: 15 },  // UNIDAD MEDIDA
+      ];
+
+      XLSX.utils.book_append_sheet(workbook, productosSheet, 'PRODUCTOS');
+
+      // 3. Hoja de BODEGAS (catálogo de referencia)
+      const bodegasData = bodegas.map((b) => ({
+        'ID': b.id,
+        'NOMBRE': b.nombre,
+        'UBICACION': b.ubicacion || 'Sin ubicación',
+      }));
+
+      const bodegasSheet = XLSX.utils.json_to_sheet(bodegasData);
+      bodegasSheet['!cols'] = [
+        { wch: 10 },  // ID
+        { wch: 30 },  // NOMBRE
+        { wch: 30 },  // UBICACION
+      ];
+
+      XLSX.utils.book_append_sheet(workbook, bodegasSheet, 'BODEGAS');
+
+      // 4. Hoja de CLIENTES (catálogo de referencia)
+      const clientesData = clientes.map((c) => ({
+        'ID': c.id,
+        'NOMBRE': c.nombre,
+        'TIPO': c.tipo,
+        'TELEFONO': c.telefono || 'Sin teléfono',
+      }));
+
+      const clientesSheet = XLSX.utils.json_to_sheet(clientesData);
+      clientesSheet['!cols'] = [
+        { wch: 10 },  // ID
+        { wch: 35 },  // NOMBRE
+        { wch: 15 },  // TIPO
+        { wch: 20 },  // TELEFONO
+      ];
+
+      XLSX.utils.book_append_sheet(workbook, clientesSheet, 'CLIENTES');
+
+      // 5. Hoja de INSTRUCCIONES
+      const instruccionesData = [
+        ['📋 INSTRUCCIONES PARA USAR LA PLANTILLA'],
+        [''],
+        ['1. Use la hoja "PLANTILLA" para registrar los movimientos'],
+        ['2. Borre los ejemplos y agregue sus propios movimientos'],
+        [''],
+        ['3. CÓMO LLENAR CADA COLUMNA:'],
+        [''],
+        ['   ✅ TIPO:'],
+        ['      - Escriba "entrada" o "salida"'],
+        [''],
+        ['   ✅ CODIGO PRODUCTO:'],
+        ['      - Vaya a la hoja PRODUCTOS'],
+        ['      - Use Ctrl+F para buscar el producto que necesita'],
+        ['      - Copie SOLO el código (ejemplo: PROD-001)'],
+        [''],
+        ['   ✅ CANTIDAD:'],
+        ['      - Número mayor a 0'],
+        [''],
+        ['   ✅ PRECIO:'],
+        ['      - Número (puede ser 0 si no aplica)'],
+        [''],
+        ['   ✅ ID BODEGA:'],
+        ['      - Vaya a la hoja BODEGAS'],
+        ['      - Use Ctrl+F para buscar la bodega que necesita'],
+        ['      - Copie SOLO el número del ID (ejemplo: 1)'],
+        [''],
+        ['   ✅ ID CLIENTE (opcional):'],
+        ['      - Vaya a la hoja CLIENTES'],
+        ['      - Use Ctrl+F para buscar el cliente que necesita'],
+        ['      - Copie SOLO el número del ID (ejemplo: 5)'],
+        ['      - Deje vacío si no hay cliente asociado'],
+        [''],
+        ['   ✅ OBSERVACION (opcional):'],
+        ['      - Cualquier texto descriptivo'],
+        [''],
+        ['4. HOJAS DISPONIBLES PARA CONSULTA:'],
+        ['   - PRODUCTOS: Tabla con todos los productos (busque por código o descripción)'],
+        ['   - BODEGAS: Tabla con todas las bodegas (busque por ID o nombre)'],
+        ['   - CLIENTES: Tabla con todos los clientes (busque por ID o nombre)'],
+        [''],
+        ['5. Una vez lleno, guarde el archivo y súbalo al sistema'],
+        [''],
+        ['⚠️ IMPORTANTE:'],
+        ['   - No modifique los nombres de las columnas en PLANTILLA'],
+        ['   - Puede agregar tantas filas como necesite en PLANTILLA'],
+        ['   - Las salidas solo se permitirán si hay stock disponible'],
+        ['   - Para productos use CODIGO, para bodegas y clientes use solo el ID (número)'],
+        [''],
+        ['💡 CONSEJO:'],
+        ['   - Use Ctrl+F en cada hoja para buscar rápidamente'],
+        ['   - Puede buscar por nombre y luego copiar el ID o código correspondiente'],
+      ];
+
+      const instruccionesSheet = XLSX.utils.aoa_to_sheet(instruccionesData);
+      instruccionesSheet['!cols'] = [{ wch: 80 }];
+
+      XLSX.utils.book_append_sheet(workbook, instruccionesSheet, 'INSTRUCCIONES');
+
+      console.log(`📋 Plantilla Excel generada para ${this.getCurrentTenant()}`);
+
+      return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+    });
+  }
+
+  async procesarMovimientosExcel(
+    buffer: Buffer,
+    userId: number,
+  ): Promise<{
+    exitosos: number;
+    fallidos: number;
+    errores: string[];
+    movimientos: Movimiento[];
+  }> {
+    const workbook = XLSX.read(buffer, { type: 'buffer' });
+
+    if (!workbook.SheetNames.includes('PLANTILLA')) {
+      throw new BadRequestException('El archivo no contiene la hoja "PLANTILLA"');
+    }
+
+    const worksheet = workbook.Sheets['PLANTILLA'];
+    const data: any[] = XLSX.utils.sheet_to_json(worksheet);
+
+    if (data.length === 0) {
+      throw new BadRequestException('La hoja "PLANTILLA" está vacía');
+    }
+
+    const movimientosCreados: Movimiento[] = [];
+    const errores: string[] = [];
+    let exitosos = 0;
+    let fallidos = 0;
+
+    return this.executeWithTransaction(async (manager) => {
+      const productoRepository = manager.getRepository(Producto);
+      const bodegaRepository = manager.getRepository(Bodega);
+      const clienteRepository = manager.getRepository(Cliente);
+      const usuarioRepository = manager.getRepository(Usuario);
+      const movimientoRepository = manager.getRepository(Movimiento);
+
+      // Validar usuario
+      const usuario = await usuarioRepository.findOne({
+        where: { id: userId },
+      });
+      if (!usuario) {
+        throw new NotFoundException(`Usuario con ID ${userId} no encontrado en ${this.getCurrentTenant()}`);
+      }
+
+      for (let i = 0; i < data.length; i++) {
+        const row = data[i];
+        const rowNumber = i + 2; // +2 porque Excel empieza en 1 y tiene header
+
+        try {
+          // Validar campos requeridos
+          const tipo = row['TIPO']?.toString().toLowerCase().trim();
+          const codigoProducto = row['CODIGO PRODUCTO']?.toString().trim();
+          const cantidad = parseFloat(row['CANTIDAD']);
+          const precio = parseFloat(row['PRECIO'] || 0);
+          const idBodega = parseInt(row['ID BODEGA']);
+          const idCliente = row['ID CLIENTE'] ? parseInt(row['ID CLIENTE']) : null;
+          const observacion = row['OBSERVACION']?.toString().trim() || '';
+
+          // Validaciones básicas
+          if (!tipo || (tipo !== 'entrada' && tipo !== 'salida')) {
+            throw new Error(`Tipo inválido: "${tipo}". Debe ser "entrada" o "salida"`);
+          }
+
+          if (!codigoProducto) {
+            throw new Error('Código de producto es requerido');
+          }
+
+          if (isNaN(cantidad) || cantidad <= 0) {
+            throw new Error(`Cantidad inválida: ${cantidad}. Debe ser mayor a 0`);
+          }
+
+          if (isNaN(precio) || precio < 0) {
+            throw new Error(`Precio inválido: ${precio}. Debe ser mayor o igual a 0`);
+          }
+
+          if (isNaN(idBodega)) {
+            throw new Error('ID de bodega es requerido y debe ser un número');
+          }
+
+          // Buscar producto por código
+          const producto = await productoRepository.findOne({
+            where: { codigo: codigoProducto },
+            relations: ['unidadMedida'],
+          });
+          if (!producto) {
+            throw new Error(`Producto "${codigoProducto}" no encontrado`);
+          }
+
+          // Buscar bodega por ID
+          const bodega = await bodegaRepository.findOne({
+            where: { id: idBodega },
+          });
+          if (!bodega) {
+            throw new Error(`Bodega con ID ${idBodega} no encontrada`);
+          }
+
+          // Buscar cliente si se proporciona
+          let cliente = null;
+          if (idCliente) {
+            cliente = await clienteRepository.findOne({
+              where: { id: idCliente },
+            });
+            if (!cliente) {
+              throw new Error(`Cliente con ID ${idCliente} no encontrado`);
+            }
+
+            // Validar tipo de cliente según el movimiento
+            if (tipo === 'entrada' && cliente.tipo !== 'proveedor' && cliente.tipo !== 'ambos') {
+              throw new Error(`Cliente con ID ${idCliente} no es un proveedor válido`);
+            }
+            if (tipo === 'salida' && cliente.tipo !== 'cliente' && cliente.tipo !== 'ambos') {
+              throw new Error(`Cliente con ID ${idCliente} no es un cliente válido`);
+            }
+          }
+
+          // Validar stock para salidas
+          if (tipo === 'salida') {
+            const stockDisponible = await this.getStockProductoBodegaWithManager(
+              manager,
+              producto.id,
+              bodega.id,
+            );
+            if (stockDisponible < cantidad) {
+              throw new Error(`Stock insuficiente. Disponible: ${stockDisponible}, solicitado: ${cantidad}`);
+            }
+          }
+
+          // Crear movimiento
+          const movimiento = movimientoRepository.create({
+            tipo: tipo as 'entrada' | 'salida',
+            cantidad,
+            precio,
+            observacion,
+            producto,
+            bodega,
+            usuario,
+            cliente,
+          });
+
+          const movimientoGuardado = await movimientoRepository.save(movimiento);
+
+          // Cargar relaciones completas
+          const movimientoCompleto = await movimientoRepository.findOne({
+            where: { id: movimientoGuardado.id },
+            relations: ['producto', 'producto.unidadMedida', 'bodega', 'usuario', 'cliente'],
+          });
+
+          movimientosCreados.push(movimientoCompleto);
+          exitosos++;
+
+          console.log(`✅ Fila ${rowNumber}: ${tipo} de ${cantidad} ${codigoProducto} en bodega ${bodega.nombre}`);
+
+        } catch (error) {
+          fallidos++;
+          const mensajeError = `Fila ${rowNumber}: ${error.message}`;
+          errores.push(mensajeError);
+          console.log(`❌ ${mensajeError}`);
+        }
+      }
+
+      console.log(`📊 Procesamiento Excel completado en ${this.getCurrentTenant()}: ${exitosos} exitosos, ${fallidos} fallidos`);
+
+      return {
+        exitosos,
+        fallidos,
+        errores,
+        movimientos: movimientosCreados,
+      };
+    });
+  }
 }

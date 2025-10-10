@@ -11,8 +11,11 @@ import {
   Request,
   ParseIntPipe,
   Res,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
 import { Response } from 'express';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { MovimientosService } from './movimientos.service';
 import {
   CreateEntradaDto,
@@ -33,6 +36,8 @@ import {
   ApiResponse,
   ApiBearerAuth,
   ApiParam,
+  ApiConsumes,
+  ApiBody,
 } from '@nestjs/swagger';
 
 @ApiTags('movimientos')
@@ -362,5 +367,113 @@ export class MovimientosController {
   async remove(@Param('id', ParseIntPipe) id: number) {
     await this.movimientosService.remove(id);
     return { message: 'Movimiento eliminado exitosamente' };
+  }
+
+  @Get('plantilla/descargar')
+  @Roles('admin', 'bodeguero')
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Descargar plantilla Excel para carga masiva de movimientos',
+    description: 'Descarga un archivo Excel con hojas de plantilla, productos, bodegas, clientes e instrucciones para la carga offline'
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Plantilla Excel generada exitosamente',
+    headers: {
+      'Content-Type': {
+        description: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      },
+      'Content-Disposition': {
+        description: 'attachment; filename="plantilla_movimientos.xlsx"',
+      },
+    },
+  })
+  @ApiResponse({ status: 403, description: 'Sin permisos' })
+  async descargarPlantilla(@Res() res: Response) {
+    const buffer = await this.movimientosService.generatePlantillaExcel();
+
+    const fileName = `plantilla_movimientos_${new Date().toISOString().split('T')[0]}.xlsx`;
+
+    res.set({
+      'Content-Type':
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Disposition': `attachment; filename="${fileName}"`,
+      'Content-Length': buffer.length,
+    });
+
+    res.send(buffer);
+  }
+
+  @Post('plantilla/subir')
+  @Roles('admin', 'bodeguero')
+  @ApiBearerAuth('JWT-auth')
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({
+    summary: 'Subir y procesar Excel con movimientos',
+    description: 'Procesa el archivo Excel con movimientos y retorna el resultado del procesamiento'
+  })
+  @ApiBody({
+    description: 'Archivo Excel con movimientos',
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+          description: 'Archivo Excel (.xlsx) con la plantilla llena',
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Excel procesado exitosamente',
+    schema: {
+      type: 'object',
+      properties: {
+        exitosos: {
+          type: 'number',
+          example: 45,
+          description: 'Número de movimientos creados exitosamente',
+        },
+        fallidos: {
+          type: 'number',
+          example: 2,
+          description: 'Número de movimientos que fallaron',
+        },
+        errores: {
+          type: 'array',
+          items: { type: 'string' },
+          example: ['Fila 3: Producto "PROD-999" no encontrado', 'Fila 5: Stock insuficiente'],
+          description: 'Lista de errores encontrados',
+        },
+        movimientos: {
+          type: 'array',
+          description: 'Lista de movimientos creados exitosamente',
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 400, description: 'Archivo inválido o formato incorrecto' })
+  @ApiResponse({ status: 403, description: 'Sin permisos' })
+  async subirPlantilla(
+    @UploadedFile() file: Express.Multer.File,
+    @Request() req,
+  ) {
+    if (!file) {
+      throw new Error('No se proporcionó ningún archivo');
+    }
+
+    if (!file.originalname.endsWith('.xlsx')) {
+      throw new Error('El archivo debe ser de tipo .xlsx');
+    }
+
+    const resultado = await this.movimientosService.procesarMovimientosExcel(
+      file.buffer,
+      req.user.sub,
+    );
+
+    return resultado;
   }
 }

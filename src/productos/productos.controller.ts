@@ -183,4 +183,22 @@ export class ProductosController {
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.productosService.remove(id);
   }
+
+  @Get('next/codigo')
+  @UseGuards(CustomJwtGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Obtener el siguiente código de producto disponible' })
+  @ApiResponse({
+    status: 200,
+    description: 'Siguiente código obtenido exitosamente',
+    schema: {
+      example: {
+        nextCodigo: 'PROD-006',
+      },
+    },
+  })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
+  getNextCodigo() {
+    return this.productosService.getNextCodigo();
+  }
 }

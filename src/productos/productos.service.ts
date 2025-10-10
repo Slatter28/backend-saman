@@ -269,4 +269,34 @@ export class ProductosService {
       console.log(`🗑️ Producto eliminado de ${this.getCurrentTenant()}:`, producto.codigo);
     });
   }
+
+  async getNextCodigo(): Promise<{ nextCodigo: string }> {
+    return this.executeWithTenant(async (manager) => {
+      const productoRepository = manager.getRepository(Producto);
+
+      // Obtener el último producto ordenado por código descendente
+      const lastProducto = await productoRepository
+        .createQueryBuilder('producto')
+        .where('producto.codigo LIKE :pattern', { pattern: 'PROD-%' })
+        .orderBy('producto.codigo', 'DESC')
+        .getOne();
+
+      let nextNumber = 1;
+
+      if (lastProducto) {
+        // Extraer el número del código (ej: "PROD-005" -> "005")
+        const match = lastProducto.codigo.match(/PROD-(\d+)/);
+        if (match) {
+          nextNumber = parseInt(match[1], 10) + 1;
+        }
+      }
+
+      // Formatear el número con ceros a la izquierda (3 dígitos)
+      const nextCodigo = `PROD-${nextNumber.toString().padStart(3, '0')}`;
+
+      console.log(`📋 Siguiente código disponible en ${this.getCurrentTenant()}: ${nextCodigo}`);
+
+      return { nextCodigo };
+    });
+  }
 }
