@@ -1539,11 +1539,11 @@ export class MovimientosService {
       });
 
       const bodegas = await bodegaRepository.find({
-        order: { nombre: 'ASC' },
+        order: { id: 'ASC' },
       });
 
       const clientes = await clienteRepository.find({
-        order: { nombre: 'ASC' },
+        order: { id: 'ASC' },
       });
 
       const workbook = XLSX.utils.book_new();
@@ -1553,18 +1553,22 @@ export class MovimientosService {
         {
           'TIPO': 'entrada',
           'CODIGO PRODUCTO': productos[0]?.codigo || 'PROD-001',
+          'PRODUCTO (AUTO)': '',  // Se llenará con fórmula
           'CANTIDAD': 10,
           'PRECIO': 100,
           'ID BODEGA': bodegas[0]?.id || 1,
+          'BODEGA (AUTO)': '',  // Se llenará con fórmula
           'ID CLIENTE': clientes[0]?.id || '',
           'OBSERVACION': 'Ejemplo de entrada',
         },
         {
           'TIPO': 'salida',
           'CODIGO PRODUCTO': productos[0]?.codigo || 'PROD-001',
+          'PRODUCTO (AUTO)': '',  // Se llenará con fórmula
           'CANTIDAD': 5,
           'PRECIO': 0,
           'ID BODEGA': bodegas[0]?.id || 1,
+          'BODEGA (AUTO)': '',  // Se llenará con fórmula
           'ID CLIENTE': clientes[1]?.id || '',
           'OBSERVACION': 'Ejemplo de salida',
         },
@@ -1572,13 +1576,35 @@ export class MovimientosService {
 
       const plantillaSheet = XLSX.utils.json_to_sheet(plantillaData);
 
+      // Agregar fórmulas BUSCARV para 50 filas (columnas PRODUCTO AUTO y BODEGA AUTO)
+      for (let i = 2; i <= 51; i++) {  // Filas 2 a 51 (fila 1 es el header)
+        // Columna C: PRODUCTO (AUTO) - Busca el código del producto en columna B
+        plantillaSheet[`C${i}`] = {
+          f: `IFERROR(VLOOKUP(B${i},PRODUCTOS!A:B,2,FALSE),"")`,
+          t: 's',
+          v: ''
+        };
+
+        // Columna G: BODEGA (AUTO) - Busca el ID de bodega en columna F
+        plantillaSheet[`G${i}`] = {
+          f: `IFERROR(VLOOKUP(F${i},BODEGAS!A:B,2,FALSE),"")`,
+          t: 's',
+          v: ''
+        };
+      }
+
+      // Actualizar el rango de la hoja para incluir las 50 filas
+      plantillaSheet['!ref'] = 'A1:I51';
+
       // Configurar anchos de columnas
       plantillaSheet['!cols'] = [
         { wch: 12 },  // TIPO
         { wch: 20 },  // CODIGO PRODUCTO
+        { wch: 40 },  // PRODUCTO (AUTO)
         { wch: 12 },  // CANTIDAD
         { wch: 12 },  // PRECIO
         { wch: 15 },  // ID BODEGA
+        { wch: 30 },  // BODEGA (AUTO)
         { wch: 15 },  // ID CLIENTE
         { wch: 40 },  // OBSERVACION
       ];
@@ -1652,6 +1678,12 @@ export class MovimientosService {
         ['      - Use Ctrl+F para buscar el producto que necesita'],
         ['      - Copie SOLO el código (ejemplo: PROD-001)'],
         [''],
+        ['   ✨ PRODUCTO (AUTO):'],
+        ['      - ¡NO ESCRIBA NADA AQUÍ!'],
+        ['      - Esta columna se llena automáticamente con el nombre del producto'],
+        ['      - Solo escriba el código en la columna anterior y el nombre aparecerá solo'],
+        ['      - Si aparece vacío, el código del producto no existe'],
+        [''],
         ['   ✅ CANTIDAD:'],
         ['      - Número mayor a 0'],
         [''],
@@ -1662,6 +1694,12 @@ export class MovimientosService {
         ['      - Vaya a la hoja BODEGAS'],
         ['      - Use Ctrl+F para buscar la bodega que necesita'],
         ['      - Copie SOLO el número del ID (ejemplo: 1)'],
+        [''],
+        ['   ✨ BODEGA (AUTO):'],
+        ['      - ¡NO ESCRIBA NADA AQUÍ!'],
+        ['      - Esta columna se llena automáticamente con el nombre de la bodega'],
+        ['      - Solo escriba el ID en la columna anterior y el nombre aparecerá solo'],
+        ['      - Si aparece vacío, el ID de la bodega no existe'],
         [''],
         ['   ✅ ID CLIENTE (opcional):'],
         ['      - Vaya a la hoja CLIENTES'],
@@ -1681,13 +1719,17 @@ export class MovimientosService {
         [''],
         ['⚠️ IMPORTANTE:'],
         ['   - No modifique los nombres de las columnas en PLANTILLA'],
+        ['   - No borre las fórmulas de las columnas PRODUCTO (AUTO) y BODEGA (AUTO)'],
         ['   - Puede agregar tantas filas como necesite en PLANTILLA'],
+        ['   - Al agregar filas, copie la fila anterior para mantener las fórmulas'],
         ['   - Las salidas solo se permitirán si hay stock disponible'],
         ['   - Para productos use CODIGO, para bodegas y clientes use solo el ID (número)'],
         [''],
         ['💡 CONSEJO:'],
         ['   - Use Ctrl+F en cada hoja para buscar rápidamente'],
         ['   - Puede buscar por nombre y luego copiar el ID o código correspondiente'],
+        ['   - Las columnas AUTO le ayudan a verificar que escribió los códigos/IDs correctos'],
+        ['   - Si las columnas AUTO aparecen vacías, significa que el código/ID no existe'],
       ];
 
       const instruccionesSheet = XLSX.utils.aoa_to_sheet(instruccionesData);
