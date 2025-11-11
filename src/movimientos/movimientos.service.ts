@@ -1761,8 +1761,18 @@ export class MovimientosService {
     const worksheet = workbook.Sheets['PLANTILLA'];
     const data: any[] = XLSX.utils.sheet_to_json(worksheet);
 
-    if (data.length === 0) {
-      throw new BadRequestException('La hoja "PLANTILLA" está vacía');
+    // Filtrar filas vacías (solo tienen fórmulas pero no datos)
+    const dataFiltrada = data.filter((row) => {
+      const tipo = row['TIPO']?.toString().trim();
+      const codigoProducto = row['CODIGO PRODUCTO']?.toString().trim();
+      const cantidad = row['CANTIDAD'];
+
+      // Si al menos tiene tipo, código y cantidad, es una fila válida
+      return tipo && codigoProducto && cantidad;
+    });
+
+    if (dataFiltrada.length === 0) {
+      throw new BadRequestException('La hoja "PLANTILLA" no contiene movimientos válidos');
     }
 
     const movimientosCreados: Movimiento[] = [];
@@ -1785,8 +1795,8 @@ export class MovimientosService {
         throw new NotFoundException(`Usuario con ID ${userId} no encontrado en ${this.getCurrentTenant()}`);
       }
 
-      for (let i = 0; i < data.length; i++) {
-        const row = data[i];
+      for (let i = 0; i < dataFiltrada.length; i++) {
+        const row = dataFiltrada[i];
         const rowNumber = i + 2; // +2 porque Excel empieza en 1 y tiene header
 
         try {
