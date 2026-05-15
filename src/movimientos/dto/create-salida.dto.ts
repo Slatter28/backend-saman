@@ -43,6 +43,7 @@ export class CreateSalidaDto {
     example: 0,
   })
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   precio?: number;
 

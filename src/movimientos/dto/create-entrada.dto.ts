@@ -44,6 +44,7 @@ export class CreateEntradaDto {
   })
   @IsNotEmpty()
   @IsNumber()
+  @Type(() => Number)
   @IsPositive()
   precio: number;
 
