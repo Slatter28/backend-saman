@@ -29,7 +29,7 @@ export class IngredienteDto {
 
 export class CrearComboDto {
   @ApiProperty({
-    description: 'ID de la bodega donde se realizará la operación',
+    description: 'ID de la bodega donde se realizarÃ¡ la operaciÃ³n',
     example: 1,
   })
   @IsInt()
@@ -37,7 +37,7 @@ export class CrearComboDto {
   bodegaId: number;
 
   @ApiProperty({
-    description: 'ID del producto combo que se creará (entrada)',
+    description: 'ID del producto combo que se crearÃ¡ (entrada)',
     example: 2,
   })
   @IsInt()

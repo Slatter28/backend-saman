@@ -30,30 +30,30 @@ export class TenantMiddleware implements NestMiddleware {
           // Extraer tenantId del payload o usar default
           const tenantId = payload.bodegaId || 'principal';
 
-          // Validar que sea un tenant válido
+          // Validar que sea un tenant vÃ¡lido
           if (!this.tenantService.isValidTenant(tenantId)) {
-            throw new BadRequestException(`Tenant inválido: ${tenantId}`);
+            throw new BadRequestException(`Tenant invÃ¡lido: ${tenantId}`);
           }
 
           // Agregar tenantId al request
           req.tenantId = tenantId;
 
-          console.log(`🏢 Tenant detectado: ${tenantId}`);
+          console.log(`ðŸ¢ Tenant detectado: ${tenantId}`);
         } catch (error) {
-          // Si el token es inválido, usar tenant por defecto
+          // Si el token es invÃ¡lido, usar tenant por defecto
           req.tenantId = 'principal';
-          console.log('⚠️ Token inválido, usando tenant por defecto');
+          console.log('âš ï¸ Token invÃ¡lido, usando tenant por defecto');
         }
       } else {
         // Sin token, usar tenant por defecto
         req.tenantId = 'principal';
-        console.log('📝 Sin token, usando tenant por defecto');
+        console.log('ðŸ“ Sin token, usando tenant por defecto');
       }
 
     } catch (error) {
       // En caso de cualquier error, usar tenant por defecto
       req.tenantId = 'principal';
-      console.log('❌ Error en middleware, usando tenant por defecto:', error.message);
+      console.log('âŒ Error en middleware, usando tenant por defecto:', error.message);
     }
 
     next();

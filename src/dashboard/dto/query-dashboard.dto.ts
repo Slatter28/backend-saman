@@ -4,7 +4,7 @@ import { IsOptional, IsNumber, Min, Max } from 'class-validator';
 
 export class MovimientosRecientesDto {
   @ApiPropertyOptional({
-    description: 'Número de movimientos a retornar',
+    description: 'NÃºmero de movimientos a retornar',
     default: 10,
     minimum: 1,
     maximum: 50,
@@ -19,7 +19,7 @@ export class MovimientosRecientesDto {
 
 export class ProductosStockBajoDto {
   @ApiPropertyOptional({
-    description: 'Límite de stock para considerar bajo',
+    description: 'LÃ­mite de stock para considerar bajo',
     default: 5,
     minimum: 0,
     maximum: 100,

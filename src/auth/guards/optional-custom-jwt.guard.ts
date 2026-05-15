@@ -16,7 +16,7 @@ export class OptionalCustomJwtGuard implements CanActivate {
 
     // If no token, allow the request to continue without authentication
     if (!token) {
-      console.log(`🔓 Optional Custom JWT Guard: Sin token, continuando sin autenticación`);
+      console.log(`ðŸ”“ Optional Custom JWT Guard: Sin token, continuando sin autenticaciÃ³n`);
       return true;
     }
 
@@ -34,14 +34,14 @@ export class OptionalCustomJwtGuard implements CanActivate {
           ...user,
           bodegaId: tenantId
         };
-        console.log(`🔐 Optional Custom JWT Guard: Usuario autenticado: ${user.correo} - Tenant: ${tenantId}`);
+        console.log(`ðŸ” Optional Custom JWT Guard: Usuario autenticado: ${user.correo} - Tenant: ${tenantId}`);
       } else {
-        console.log(`🔓 Optional Custom JWT Guard: Usuario no encontrado para token, continuando sin autenticación`);
+        console.log(`ðŸ”“ Optional Custom JWT Guard: Usuario no encontrado para token, continuando sin autenticaciÃ³n`);
       }
 
       return true;
     } catch (error) {
-      console.log(`🔓 Optional Custom JWT Guard: Token inválido, continuando sin autenticación:`, error.message);
+      console.log(`ðŸ”“ Optional Custom JWT Guard: Token invÃ¡lido, continuando sin autenticaciÃ³n:`, error.message);
       return true; // Allow the request to continue even with invalid token
     }
   }

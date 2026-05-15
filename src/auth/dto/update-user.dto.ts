@@ -11,7 +11,7 @@ import { ApiProperty } from '@nestjs/swagger';
 export class UpdateUserDto {
   @ApiProperty({
     description: 'Nombre completo del usuario',
-    example: 'Juan Pérez',
+    example: 'Juan PÃ©rez',
     required: false,
   })
   @IsOptional()
@@ -19,7 +19,7 @@ export class UpdateUserDto {
   nombre?: string;
 
   @ApiProperty({
-    description: 'Correo electrónico del usuario',
+    description: 'Correo electrÃ³nico del usuario',
     example: 'juan.perez@email.com',
     required: false,
   })
@@ -28,14 +28,14 @@ export class UpdateUserDto {
   correo?: string;
 
   @ApiProperty({
-    description: 'Contraseña del usuario (mínimo 6 caracteres)',
+    description: 'ContraseÃ±a del usuario (mÃ­nimo 6 caracteres)',
     example: 'password123',
     minLength: 6,
     required: false,
   })
   @IsOptional()
   @IsString()
-  @MinLength(6, { message: 'La contraseña debe tener al menos 6 caracteres' })
+  @MinLength(6, { message: 'La contraseÃ±a debe tener al menos 6 caracteres' })
   contrasena?: string;
 
   @ApiProperty({

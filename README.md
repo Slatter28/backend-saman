@@ -2,7 +2,7 @@
 
 A robust NestJS backend application for warehouse inventory management, built with TypeScript and PostgreSQL.
 
-## 📋 Project Overview
+## ðŸ“‹ Project Overview
 
 Backend Saman is an inventory management system designed for warehouses (bodegas). It provides comprehensive functionality for tracking products, managing warehouse operations, and monitoring inventory movements.
 
@@ -15,7 +15,7 @@ Backend Saman is an inventory management system designed for warehouses (bodegas
 - **Security**: JWT authentication with bcrypt password hashing
 - **API Documentation**: Swagger/OpenAPI integration
 
-## 🏗️ Architecture
+## ðŸ—ï¸ Architecture
 
 - **Framework**: NestJS with TypeScript
 - **Database**: PostgreSQL with TypeORM
@@ -31,7 +31,7 @@ Backend Saman is an inventory management system designed for warehouses (bodegas
 - **UnidadMedida**: Units of measure for products
 - **Movimiento**: Inventory movement transactions
 
-## 🚀 Getting Started
+## ðŸš€ Getting Started
 
 ### Prerequisites
 
@@ -75,7 +75,7 @@ PORT=3000
 NODE_ENV=development
 ```
 
-## 🎯 Development
+## ðŸŽ¯ Development
 
 ### Running the Application
 
@@ -119,7 +119,7 @@ npm run test:cov
 npm run test:e2e
 ```
 
-## 🔒 Security Features
+## ðŸ”’ Security Features
 
 - **Password Security**: Bcrypt hashing with 10 salt rounds
 - **JWT Authentication**: Secure token-based authentication
@@ -127,14 +127,14 @@ npm run test:e2e
 - **Input Validation**: Comprehensive request validation
 - **SSL Support**: Database connections with SSL
 
-## 📚 API Documentation
+## ðŸ“š API Documentation
 
 Once the application is running, access the Swagger documentation at:
 ```
 http://localhost:3000/api
 ```
 
-## 🗃️ Database
+## ðŸ—ƒï¸ Database
 
 The application uses PostgreSQL with TypeORM for database operations. The database schema includes:
 
@@ -147,7 +147,7 @@ The application uses PostgreSQL with TypeORM for database operations. The databa
 
 TypeORM is configured with synchronization enabled for development. For production, consider using proper migrations.
 
-## 🌐 Deployment
+## ðŸŒ Deployment
 
 The application is configured for deployment on platforms like Render, Heroku, or similar cloud services.
 
@@ -158,7 +158,7 @@ Ensure all environment variables are properly set in your production environment
 - JWT secret (use a strong, unique secret)
 - NODE_ENV=production
 
-## 🤝 Contributing
+## ðŸ¤ Contributing
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
@@ -166,14 +166,14 @@ Ensure all environment variables are properly set in your production environment
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## 📄 License
+## ðŸ“„ License
 
 This project is private and proprietary. All rights reserved.
 
-## 📞 Support
+## ðŸ“ž Support
 
 For support and questions, please contact the development team.
 
 ---
 
-Built with ❤️ using [NestJS](https://nestjs.com/)
+Built with â¤ï¸ using [NestJS](https://nestjs.com/)

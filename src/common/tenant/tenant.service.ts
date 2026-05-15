@@ -10,13 +10,13 @@ export class TenantService {
   ) {}
 
   /**
-   * Obtiene un EntityManager configurado para un tenant específico
+   * Obtiene un EntityManager configurado para un tenant especÃ­fico
    */
   getEntityManager(tenantId: string): EntityManager {
     // Mapear tenantId a nombre de esquema
     const schemaName = this.getSchemaName(tenantId);
     
-    // Crear query runner con el esquema específico
+    // Crear query runner con el esquema especÃ­fico
     const queryRunner = this.dataSource.createQueryRunner();
     
     // Configurar el search_path para PostgreSQL
@@ -38,7 +38,7 @@ export class TenantService {
   }
 
   /**
-   * Valida si un tenantId es válido
+   * Valida si un tenantId es vÃ¡lido
    */
   isValidTenant(tenantId: string): boolean {
     return ['principal', 'sucursal'].includes(tenantId);

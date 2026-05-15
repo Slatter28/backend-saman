@@ -3,7 +3,7 @@ import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateProductoDto {
   @ApiProperty({
-    description: 'Código único del producto',
+    description: 'CÃ³digo Ãºnico del producto',
     example: 'PROD001',
   })
   @IsNotEmpty()
@@ -11,7 +11,7 @@ export class CreateProductoDto {
   codigo: string;
 
   @ApiProperty({
-    description: 'Descripción del producto',
+    description: 'DescripciÃ³n del producto',
     example: 'Laptop Dell Inspiron 15',
   })
   @IsNotEmpty()

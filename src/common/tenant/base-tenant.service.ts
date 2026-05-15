@@ -15,7 +15,7 @@ export class BaseTenantService {
   ) {
     // Obtener tenantId del request
     this.tenantId = request.tenantId || 'principal';
-    console.log(`🏢 BaseTenantService inicializado para tenant: ${this.tenantId}`);
+    console.log(`ðŸ¢ BaseTenantService inicializado para tenant: ${this.tenantId}`);
   }
 
   /**
@@ -29,7 +29,7 @@ export class BaseTenantService {
     await queryRunner.connect();
     await queryRunner.query(`SET search_path TO ${schemaName}, public`);
     
-    console.log(`🗄️ Repository configurado para esquema: ${schemaName}`);
+    console.log(`ðŸ—„ï¸ Repository configurado para esquema: ${schemaName}`);
     return queryRunner.manager.getRepository(entity);
   }
 

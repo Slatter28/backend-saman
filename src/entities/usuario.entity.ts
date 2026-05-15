@@ -27,7 +27,7 @@ export class Usuario {
   @Column({ type: 'enum', enum: ['admin', 'bodeguero'] })
   rol: 'admin' | 'bodeguero';
 
-  // 🆕 NUEVO CAMPO - ID de la bodega/esquema
+  // ðŸ†• NUEVO CAMPO - ID de la bodega/esquema
   @Column({ name: 'bodega_id', default: 'principal' })
   bodegaId: string;
 

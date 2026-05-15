@@ -10,7 +10,7 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class QueryBodegaDto {
   @ApiPropertyOptional({
-    description: 'Número de página',
+    description: 'NÃºmero de pÃ¡gina',
     example: 1,
     minimum: 1,
   })
@@ -21,7 +21,7 @@ export class QueryBodegaDto {
   page?: number = 1;
 
   @ApiPropertyOptional({
-    description: 'Elementos por página',
+    description: 'Elementos por pÃ¡gina',
     example: 10,
     minimum: 1,
   })
@@ -40,7 +40,7 @@ export class QueryBodegaDto {
   nombre?: string;
 
   @ApiPropertyOptional({
-    description: 'Buscar por ubicación de la bodega',
+    description: 'Buscar por ubicaciÃ³n de la bodega',
     example: 'Primer piso',
   })
   @IsOptional()

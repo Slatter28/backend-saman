@@ -36,7 +36,7 @@ export class ExcelQueryDto {
   productoId?: number;
 
   @ApiPropertyOptional({
-    description: 'Filtrar por código de producto',
+    description: 'Filtrar por cÃ³digo de producto',
     example: 'PROD001',
   })
   @IsOptional()

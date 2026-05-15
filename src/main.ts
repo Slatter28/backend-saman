@@ -23,7 +23,7 @@ async function bootstrap() {
     credentials: true,
   });
 
-  // Configurar validación global
+  // Configurar validaciÃ³n global
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -35,12 +35,12 @@ async function bootstrap() {
   // Configurar Swagger
   const config = new DocumentBuilder()
     .setTitle('SAMAN API')
-    .setDescription('API para el sistema de gestión de inventario SAMAN')
+    .setDescription('API para el sistema de gestiÃ³n de inventario SAMAN')
     .setVersion('1.0.0')
-    .addTag('auth', 'Endpoints de autenticación')
-    .addTag('productos', 'Gestión de productos')
-    .addTag('bodegas', 'Gestión de bodegas')
-    .addTag('movimientos', 'Gestión de movimientos de inventario')
+    .addTag('auth', 'Endpoints de autenticaciÃ³n')
+    .addTag('productos', 'GestiÃ³n de productos')
+    .addTag('bodegas', 'GestiÃ³n de bodegas')
+    .addTag('movimientos', 'GestiÃ³n de movimientos de inventario')
     .addBearerAuth(
       {
         type: 'http',

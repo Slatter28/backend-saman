@@ -31,7 +31,7 @@ export class BodegasController {
   @UseGuards(CustomJwtGuard)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({
-    summary: 'Obtener lista de bodegas con paginación y filtros ',
+    summary: 'Obtener lista de bodegas con paginaciÃ³n y filtros ',
   })
   @ApiResponse({
     status: 200,
@@ -143,7 +143,7 @@ export class BodegasController {
       },
     },
   })
-  @ApiResponse({ status: 400, description: 'Datos inválidos' })
+  @ApiResponse({ status: 400, description: 'Datos invÃ¡lidos' })
   @ApiResponse({ status: 401, description: 'No autorizado' })
   @ApiResponse({ status: 409, description: 'Bodega con este nombre ya existe' })
   create(@Body() createBodegaDto: CreateBodegaDto) {
@@ -170,7 +170,7 @@ export class BodegasController {
       },
     },
   })
-  @ApiResponse({ status: 400, description: 'Datos inválidos' })
+  @ApiResponse({ status: 400, description: 'Datos invÃ¡lidos' })
   @ApiResponse({ status: 401, description: 'No autorizado' })
   @ApiResponse({ status: 404, description: 'Bodega no encontrada' })
   @ApiResponse({ status: 409, description: 'Bodega con este nombre ya existe' })

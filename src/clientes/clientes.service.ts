@@ -26,20 +26,24 @@ export class ClientesService {
     const userTenant = (request as any).user?.bodegaId;
     const middlewareTenant = request.tenantId;
 
-    console.log(`🔍 ClientesService constructor DEBUG:`);
-    console.log(`   - userTenant (user.bodegaId): "${userTenant}"`);
-    console.log(`   - middlewareTenant: "${middlewareTenant}"`);
-    console.log(`   - user completo:`, (request as any).user);
+    console.log('ClientesService constructor DEBUG:');
+    console.log(`  - userTenant (user.bodegaId): "${userTenant}"`);
+    console.log(`  - middlewareTenant: "${middlewareTenant}"`);
+    console.log('  - user completo:', (request as any).user);
 
     this.tenantId = userTenant || middlewareTenant || 'principal';
-    console.log(`👥 ClientesService inicializado para tenant: "${this.tenantId}"`);
+    console.log(`ClientesService inicializado para tenant: "${this.tenantId}"`);
 
     if ((request as any).user) {
-      console.log(`👤 Usuario autenticado detectado: ${(request as any).user.correo} - Tenant: ${this.tenantId}`);
+      console.log(
+        `Usuario autenticado detectado: ${(request as any).user.correo} - Tenant: ${this.tenantId}`,
+      );
     } else if (middlewareTenant) {
-      console.log(`🔧 Tenant desde middleware: ${this.tenantId}`);
+      console.log(`Tenant desde middleware: ${this.tenantId}`);
     } else {
-      console.log(`👤 Sin usuario autenticado, usando tenant por defecto: ${this.tenantId}`);
+      console.log(
+        `Sin usuario autenticado, usando tenant por defecto: ${this.tenantId}`,
+      );
     }
   }
 
@@ -47,32 +51,32 @@ export class ClientesService {
     return this.tenantId;
   }
 
-    private getSchemaName(tenantId: string): string {
+  private getSchemaName(tenantId: string): string {
     const schemaMap: Record<string, string> = {
-      'principal': 'inventario_principal',
-      'sucursal': 'inventario_sucursal',
+      principal: 'inventario_principal',
+      sucursal: 'inventario_sucursal',
     };
     return schemaMap[tenantId] || 'inventario_principal';
   }
 
-    private async executeWithTenant<T>(
-    operation: (manager: any) => Promise<T>
+  private async executeWithTenant<T>(
+    operation: (manager: any) => Promise<T>,
   ): Promise<T> {
     const schemaName = this.getSchemaName(this.tenantId);
     const queryRunner = this.dataSource.createQueryRunner();
 
-    console.log(`🔍 ClientesService DEBUG:`);
-    console.log(`   - this.tenantId: "${this.tenantId}"`);
-    console.log(`   - schemaName calculado: "${schemaName}"`);
+    console.log('ClientesService DEBUG:');
+    console.log(`  - this.tenantId: "${this.tenantId}"`);
+    console.log(`  - schemaName calculado: "${schemaName}"`);
 
     try {
       await queryRunner.connect();
       await queryRunner.query(`SET search_path TO ${schemaName}, public`);
-      console.log(`🗄️ Ejecutando operación en esquema: ${schemaName}`);
+      console.log(`Ejecutando operacion en esquema: ${schemaName}`);
 
       // Verificar el search_path actual
       const searchPathResult = await queryRunner.query('SHOW search_path');
-      console.log(`📍 Search path actual: ${JSON.stringify(searchPathResult)}`);
+      console.log(`Search path actual: ${JSON.stringify(searchPathResult)}`);
 
       // Verificar si la tabla clientes existe en el esquema del tenant
       const tableExistsQuery = `
@@ -81,16 +85,20 @@ export class ClientesService {
           WHERE table_schema = $1 AND table_name = 'clientes'
         );
       `;
-      const tableExists = await queryRunner.query(tableExistsQuery, [schemaName]);
-      console.log(`🔍 ¿Tabla 'clientes' existe en esquema '${schemaName}'?: ${JSON.stringify(tableExists)}`);
+      const tableExists = await queryRunner.query(tableExistsQuery, [
+        schemaName,
+      ]);
+      console.log(
+        `Tabla 'clientes' existe en esquema '${schemaName}'?: ${JSON.stringify(tableExists)}`,
+      );
 
       // Pasar el EntityManager al callback
       const result = await operation(queryRunner.manager);
       return result;
     } finally {
-      // 🔥 IMPORTANTE: Siempre liberar el QueryRunner
+      // IMPORTANTE: Siempre liberar el QueryRunner
       await queryRunner.release();
-      console.log(`✅ QueryRunner liberado para esquema: ${schemaName}`);
+      console.log(`QueryRunner liberado para esquema: ${schemaName}`);
     }
   }
 
@@ -112,9 +120,9 @@ export class ClientesService {
         });
       }
 
-      // if (tipo) {
-      //   queryBuilder.andWhere('cliente.tipo = :tipo', { tipo });
-      // }
+      if (tipo) {
+        queryBuilder.andWhere('cliente.tipo = :tipo', { tipo });
+      }
 
       if (email) {
         queryBuilder.andWhere('cliente.email ILIKE :email', {
@@ -123,9 +131,9 @@ export class ClientesService {
       }
 
       const [clientes, total] = await queryBuilder.getManyAndCount();
-
-
-         console.log(` Clientes encontrados en ${this.getCurrentTenant()}: ${total}`);
+      console.log(
+        `Clientes encontrados en ${this.getCurrentTenant()}: ${total}`,
+      );
 
       return {
         data: clientes,
@@ -190,7 +198,7 @@ export class ClientesService {
 
       const { nombre, telefono, email, direccion, tipo } = updateClienteDto;
 
-      // Verificar si el nuevo email ya existe (si se está cambiando)
+      // Verificar si el nuevo email ya existe (si se estÃ¡ cambiando)
       if (email && email !== cliente.email) {
         const existingClient = await manager.getRepository(Cliente).findOne({
           where: { email },

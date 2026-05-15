@@ -29,7 +29,7 @@ export class ProductoDestinoDto {
 
 export class DividirProductoDto {
   @ApiProperty({
-    description: 'ID del producto origen (combo) del cual se hará la salida',
+    description: 'ID del producto origen (combo) del cual se harÃ¡ la salida',
     example: 1,
   })
   @IsInt()
@@ -37,7 +37,7 @@ export class DividirProductoDto {
   productoOrigenId: number;
 
   @ApiProperty({
-    description: 'ID de la bodega donde se realizará la operación',
+    description: 'ID de la bodega donde se realizarÃ¡ la operaciÃ³n',
     example: 1,
   })
   @IsInt()

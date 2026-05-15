@@ -13,7 +13,7 @@ export class CreateUnidadMedidaDto {
   nombre: string;
 
   @ApiPropertyOptional({
-    description: 'Descripción de la unidad de medida',
+    description: 'DescripciÃ³n de la unidad de medida',
     example: 'Unidad',
     maxLength: 255,
   })

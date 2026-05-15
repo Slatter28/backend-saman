@@ -39,27 +39,33 @@ export class MovimientosService {
     const middlewareTenant = request.tenantId;
 
     this.tenantId = userTenant || middlewareTenant || 'principal';
-    console.log(`📦 MovimientosService inicializado para tenant: ${this.tenantId}`);
+    console.log(
+      `MovimientosService inicializado para tenant: ${this.tenantId}`,
+    );
 
     if ((request as any).user) {
-      console.log(`👤 Usuario autenticado detectado: ${(request as any).user.correo} - Tenant: ${this.tenantId}`);
+      console.log(
+        `Usuario autenticado detectado: ${(request as any).user.correo} - Tenant: ${this.tenantId}`,
+      );
     } else if (middlewareTenant) {
-      console.log(`🔧 Tenant desde middleware: ${this.tenantId}`);
+      console.log(`Tenant desde middleware: ${this.tenantId}`);
     } else {
-      console.log(`👤 Sin usuario autenticado, usando tenant por defecto: ${this.tenantId}`);
+      console.log(
+        `Sin usuario autenticado, usando tenant por defecto: ${this.tenantId}`,
+      );
     }
   }
 
   private getSchemaName(tenantId: string): string {
     const schemaMap: Record<string, string> = {
-      'principal': 'inventario_principal',
-      'sucursal': 'inventario_sucursal',
+      principal: 'inventario_principal',
+      sucursal: 'inventario_sucursal',
     };
     return schemaMap[tenantId] || 'inventario_principal';
   }
 
   private async executeWithTenant<T>(
-    operation: (manager: any) => Promise<T>
+    operation: (manager: any) => Promise<T>,
   ): Promise<T> {
     const schemaName = this.getSchemaName(this.tenantId);
     const queryRunner = this.dataSource.createQueryRunner();
@@ -67,21 +73,21 @@ export class MovimientosService {
     try {
       await queryRunner.connect();
       await queryRunner.query(`SET search_path TO ${schemaName}, public`);
-      console.log(`🗄️ Ejecutando operación en esquema: ${schemaName}`);
+      console.log(`Ejecutando operacion en esquema: ${schemaName}`);
 
       // Pasar el EntityManager al callback
       const result = await operation(queryRunner.manager);
       return result;
     } finally {
-      // 🔥 IMPORTANTE: Siempre liberar el QueryRunner
+      // IMPORTANTE: Siempre liberar el QueryRunner
       await queryRunner.release();
-      console.log(`✅ QueryRunner liberado para esquema: ${schemaName}`);
+      console.log(`QueryRunner liberado para esquema: ${schemaName}`);
     }
   }
 
-  // 🚀 NUEVO: Método especial para transacciones de inventario
+  // NUEVO: Metodo especial para transacciones de inventario
   private async executeWithTransaction<T>(
-    operation: (manager: any) => Promise<T>
+    operation: (manager: any) => Promise<T>,
   ): Promise<T> {
     const schemaName = this.getSchemaName(this.tenantId);
     const queryRunner = this.dataSource.createQueryRunner();
@@ -90,20 +96,20 @@ export class MovimientosService {
       await queryRunner.connect();
       await queryRunner.startTransaction();
       await queryRunner.query(`SET search_path TO ${schemaName}, public`);
-      console.log(`🔄 Iniciando transacción en esquema: ${schemaName}`);
+      console.log(`Iniciando transaccion en esquema: ${schemaName}`);
 
       const result = await operation(queryRunner.manager);
 
       await queryRunner.commitTransaction();
-      console.log(`✅ Transacción confirmada en esquema: ${schemaName}`);
+      console.log(`Transaccion confirmada en esquema: ${schemaName}`);
       return result;
     } catch (error) {
       await queryRunner.rollbackTransaction();
-      console.log(`❌ Transacción revertida en esquema: ${schemaName}`);
+      console.log(`Transaccion revertida en esquema: ${schemaName}`);
       throw error;
     } finally {
       await queryRunner.release();
-      console.log(`✅ QueryRunner liberado para esquema: ${schemaName}`);
+      console.log(`QueryRunner liberado para esquema: ${schemaName}`);
     }
   }
 
@@ -140,7 +146,9 @@ export class MovimientosService {
         where: { id: bodegaId },
       });
       if (!bodega) {
-        throw new NotFoundException(`Bodega con ID ${bodegaId} no encontrada en ${this.getCurrentTenant()}`);
+        throw new NotFoundException(
+          `Bodega con ID ${bodegaId} no encontrada en ${this.getCurrentTenant()}`,
+        );
       }
 
       // Validar que el usuario existe EN EL TENANT ACTUAL
@@ -148,7 +156,9 @@ export class MovimientosService {
         where: { id: userId },
       });
       if (!usuario) {
-        throw new NotFoundException(`Usuario con ID ${userId} no encontrado en ${this.getCurrentTenant()}`);
+        throw new NotFoundException(
+          `Usuario con ID ${userId} no encontrado en ${this.getCurrentTenant()}`,
+        );
       }
 
       // Validar cliente si se proporciona EN EL TENANT ACTUAL
@@ -165,7 +175,7 @@ export class MovimientosService {
         // Validar que el cliente puede ser proveedor
         if (cliente.tipo !== 'proveedor' && cliente.tipo !== 'ambos') {
           throw new BadRequestException(
-            'El cliente seleccionado no es un proveedor válido',
+            'El cliente seleccionado no es un proveedor vÃƒÂ¡lido',
           );
         }
       }
@@ -183,12 +193,20 @@ export class MovimientosService {
 
       const savedMovimiento = await movimientoRepository.save(movimiento);
 
-      console.log(`📦➡️ Entrada creada en ${this.getCurrentTenant()}: ${cantidad} ${producto.codigo} -> ${bodega.nombre}`);
+      console.log(
+        `Ã°Å¸â€œÂ¦Ã¢Å¾Â¡Ã¯Â¸Â Entrada creada en ${this.getCurrentTenant()}: ${cantidad} ${producto.codigo} -> ${bodega.nombre}`,
+      );
 
       // Retornar con relaciones completas
       return movimientoRepository.findOne({
         where: { id: savedMovimiento.id },
-        relations: ['producto', 'producto.unidadMedida', 'bodega', 'usuario', 'cliente'],
+        relations: [
+          'producto',
+          'producto.unidadMedida',
+          'bodega',
+          'usuario',
+          'cliente',
+        ],
       });
     });
   }
@@ -222,7 +240,9 @@ export class MovimientosService {
         where: { id: bodegaId },
       });
       if (!bodega) {
-        throw new NotFoundException(`Bodega con ID ${bodegaId} no encontrada en ${this.getCurrentTenant()}`);
+        throw new NotFoundException(
+          `Bodega con ID ${bodegaId} no encontrada en ${this.getCurrentTenant()}`,
+        );
       }
 
       // Validar que el usuario existe EN EL TENANT ACTUAL
@@ -230,7 +250,9 @@ export class MovimientosService {
         where: { id: userId },
       });
       if (!usuario) {
-        throw new NotFoundException(`Usuario con ID ${userId} no encontrado en ${this.getCurrentTenant()}`);
+        throw new NotFoundException(
+          `Usuario con ID ${userId} no encontrado en ${this.getCurrentTenant()}`,
+        );
       }
 
       // Validar stock disponible EN EL TENANT ACTUAL
@@ -259,7 +281,7 @@ export class MovimientosService {
         // Validar que el cliente puede comprar
         if (cliente.tipo !== 'cliente' && cliente.tipo !== 'ambos') {
           throw new BadRequestException(
-            'El cliente seleccionado no es un cliente válido',
+            'El cliente seleccionado no es un cliente vÃƒÂ¡lido',
           );
         }
       }
@@ -277,12 +299,20 @@ export class MovimientosService {
 
       const savedMovimiento = await movimientoRepository.save(movimiento);
 
-      console.log(`📦⬅️ Salida creada en ${this.getCurrentTenant()}: ${cantidad} ${producto.codigo} <- ${bodega.nombre}`);
+      console.log(
+        `Ã°Å¸â€œÂ¦Ã¢Â¬â€¦Ã¯Â¸Â Salida creada en ${this.getCurrentTenant()}: ${cantidad} ${producto.codigo} <- ${bodega.nombre}`,
+      );
 
       // Retornar con relaciones completas
       return movimientoRepository.findOne({
         where: { id: savedMovimiento.id },
-        relations: ['producto', 'producto.unidadMedida', 'bodega', 'usuario', 'cliente'],
+        relations: [
+          'producto',
+          'producto.unidadMedida',
+          'bodega',
+          'usuario',
+          'cliente',
+        ],
       });
     });
   }
@@ -363,7 +393,9 @@ export class MovimientosService {
 
       const [movimientos, total] = await queryBuilder.getManyAndCount();
 
-      console.log(`📦 Movimientos encontrados en ${this.getCurrentTenant()}: ${total} registros (página ${page})`);
+      console.log(
+        `Ã°Å¸â€œÂ¦ Movimientos encontrados en ${this.getCurrentTenant()}: ${total} registros (pÃƒÂ¡gina ${page})`,
+      );
 
       return {
         data: movimientos,
@@ -409,153 +441,153 @@ export class MovimientosService {
     return this.executeWithTenant(async (manager) => {
       let queryBuilder = manager
         .getRepository(Movimiento)
-      .createQueryBuilder('movimiento')
-      .select([
-        'producto.id as "productoId"',
-        'producto.codigo as "productoCodigo"',
-        'producto.descripcion as "productoDescripcion"',
-        'unidadMedida.nombre as "unidadMedida"',
-        'bodega.id as "bodegaId"',
-        'bodega.nombre as "bodegaNombre"',
-        'bodega.ubicacion as "bodegaUbicacion"',
-        'SUM(CASE WHEN movimiento.tipo = \'entrada\' THEN movimiento.cantidad ELSE -movimiento.cantidad END) as "stock"',
-        'COUNT(movimiento.id) as "totalMovimientos"',
-        'MAX(movimiento.fecha) as "ultimoMovimiento"',
-        'SUM(CASE WHEN movimiento.tipo = \'entrada\' THEN movimiento.cantidad ELSE 0 END) as "totalEntradas"',
-        'SUM(CASE WHEN movimiento.tipo = \'salida\' THEN movimiento.cantidad ELSE 0 END) as "totalSalidas"',
-      ])
-      .leftJoin('movimiento.producto', 'producto')
-      .leftJoin('producto.unidadMedida', 'unidadMedida')
-      .leftJoin('movimiento.bodega', 'bodega')
-      .groupBy(
-        'producto.id, producto.codigo, producto.descripcion, unidadMedida.nombre, bodega.id, bodega.nombre, bodega.ubicacion',
-      );
+        .createQueryBuilder('movimiento')
+        .select([
+          'producto.id as "productoId"',
+          'producto.codigo as "productoCodigo"',
+          'producto.descripcion as "productoDescripcion"',
+          'unidadMedida.nombre as "unidadMedida"',
+          'bodega.id as "bodegaId"',
+          'bodega.nombre as "bodegaNombre"',
+          'bodega.ubicacion as "bodegaUbicacion"',
+          'SUM(CASE WHEN movimiento.tipo = \'entrada\' THEN movimiento.cantidad ELSE -movimiento.cantidad END) as "stock"',
+          'COUNT(movimiento.id) as "totalMovimientos"',
+          'MAX(movimiento.fecha) as "ultimoMovimiento"',
+          'SUM(CASE WHEN movimiento.tipo = \'entrada\' THEN movimiento.cantidad ELSE 0 END) as "totalEntradas"',
+          'SUM(CASE WHEN movimiento.tipo = \'salida\' THEN movimiento.cantidad ELSE 0 END) as "totalSalidas"',
+        ])
+        .leftJoin('movimiento.producto', 'producto')
+        .leftJoin('producto.unidadMedida', 'unidadMedida')
+        .leftJoin('movimiento.bodega', 'bodega')
+        .groupBy(
+          'producto.id, producto.codigo, producto.descripcion, unidadMedida.nombre, bodega.id, bodega.nombre, bodega.ubicacion',
+        );
 
-    // Aplicar filtros WHERE
-    if (filtros?.bodegaId) {
-      queryBuilder = queryBuilder.andWhere('bodega.id = :bodegaId', {
-        bodegaId: filtros.bodegaId,
-      });
-    }
+      // Aplicar filtros WHERE
+      if (filtros?.bodegaId) {
+        queryBuilder = queryBuilder.andWhere('bodega.id = :bodegaId', {
+          bodegaId: filtros.bodegaId,
+        });
+      }
 
-    if (filtros?.productoId) {
-      queryBuilder = queryBuilder.andWhere('producto.id = :productoId', {
-        productoId: filtros.productoId,
-      });
-    }
+      if (filtros?.productoId) {
+        queryBuilder = queryBuilder.andWhere('producto.id = :productoId', {
+          productoId: filtros.productoId,
+        });
+      }
 
-    // ✅ CORREGIDO: Aplicar filtros HAVING correctamente
-    const stockCalculation =
-      "SUM(CASE WHEN movimiento.tipo = 'entrada' THEN movimiento.cantidad ELSE -movimiento.cantidad END)";
+      // Ã¢Å“â€¦ CORREGIDO: Aplicar filtros HAVING correctamente
+      const stockCalculation =
+        "SUM(CASE WHEN movimiento.tipo = 'entrada' THEN movimiento.cantidad ELSE -movimiento.cantidad END)";
 
-    // Si no incluir ceros, aplicar filtro básico
-    if (!filtros?.incluirCeros) {
-      queryBuilder = queryBuilder.having(`${stockCalculation} > 0`);
-    }
-
-    // Si hay stock mínimo Y no es solo stock bajo
-    if (filtros?.stockMinimo && !filtros?.soloStockBajo) {
+      // Si no incluir ceros, aplicar filtro bÃƒÂ¡sico
       if (!filtros?.incluirCeros) {
-        // Ya hay un HAVING, usar andHaving
-        queryBuilder = queryBuilder.andHaving(
-          `${stockCalculation} >= :stockMinimo`,
-          {
-            stockMinimo: filtros.stockMinimo,
-          },
-        );
-      } else {
-        // Primer HAVING
-        queryBuilder = queryBuilder.having(
-          `${stockCalculation} >= :stockMinimo`,
-          {
-            stockMinimo: filtros.stockMinimo,
-          },
-        );
-      }
-    }
-
-    // Si es solo stock bajo
-    if (filtros?.soloStockBajo) {
-      if (!filtros?.incluirCeros || filtros?.stockMinimo) {
-        // Ya hay un HAVING, usar andHaving
-        queryBuilder = queryBuilder.andHaving(`${stockCalculation} <= 10`);
-      } else {
-        // Primer HAVING
-        queryBuilder = queryBuilder.having(`${stockCalculation} <= 10`);
-      }
-    }
-
-    queryBuilder = queryBuilder
-      .orderBy('producto.codigo', 'ASC')
-      .addOrderBy('bodega.nombre', 'ASC');
-
-    const inventario = await queryBuilder.getRawMany();
-
-    // Calcular estadísticas
-    const estadisticas = {
-      totalProductosDiferentes: new Set(
-        inventario.map((item) => item.productoId),
-      ).size,
-      totalBodegas: new Set(inventario.map((item) => item.bodegaId)).size,
-      stockTotalUnidades: inventario.reduce(
-        (sum, item) => sum + parseFloat(item.stock),
-        0,
-      ),
-      totalRegistros: inventario.length,
-      productosStockBajo: inventario.filter(
-        (item) => parseFloat(item.stock) <= 10,
-      ).length,
-      ultimaActualizacion: new Date().toISOString(),
-    };
-
-    // Resumen por bodega
-    const resumenPorBodega = inventario.reduce((acc, item) => {
-      const bodegaId = parseInt(item.bodegaId);
-      if (!acc[bodegaId]) {
-        acc[bodegaId] = {
-          bodega: {
-            id: bodegaId,
-            nombre: item.bodegaNombre,
-            ubicacion: item.bodegaUbicacion,
-          },
-          totalProductos: 0,
-          stockTotal: 0,
-        };
-      }
-      acc[bodegaId].totalProductos++;
-      acc[bodegaId].stockTotal += parseFloat(item.stock);
-      return acc;
-    }, {});
-
-    // Resumen por producto (stock total en todas las bodegas)
-    const resumenPorProducto = inventario.reduce((acc, item) => {
-      const productoId = parseInt(item.productoId);
-      if (!acc[productoId]) {
-        acc[productoId] = {
-          producto: {
-            id: productoId,
-            codigo: item.productoCodigo,
-            descripcion: item.productoDescripcion,
-            unidadMedida: item.unidadMedida,
-          },
-          stockTotal: 0,
-          bodegas: 0,
-          ultimoMovimiento: item.ultimoMovimiento,
-        };
-      }
-      acc[productoId].stockTotal += parseFloat(item.stock);
-      acc[productoId].bodegas++;
-
-      // Mantener el último movimiento más reciente
-      if (
-        new Date(item.ultimoMovimiento) >
-        new Date(acc[productoId].ultimoMovimiento || '1970-01-01')
-      ) {
-        acc[productoId].ultimoMovimiento = item.ultimoMovimiento;
+        queryBuilder = queryBuilder.having(`${stockCalculation} > 0`);
       }
 
-      return acc;
-    }, {});
+      // Si hay stock mÃƒÂ­nimo Y no es solo stock bajo
+      if (filtros?.stockMinimo && !filtros?.soloStockBajo) {
+        if (!filtros?.incluirCeros) {
+          // Ya hay un HAVING, usar andHaving
+          queryBuilder = queryBuilder.andHaving(
+            `${stockCalculation} >= :stockMinimo`,
+            {
+              stockMinimo: filtros.stockMinimo,
+            },
+          );
+        } else {
+          // Primer HAVING
+          queryBuilder = queryBuilder.having(
+            `${stockCalculation} >= :stockMinimo`,
+            {
+              stockMinimo: filtros.stockMinimo,
+            },
+          );
+        }
+      }
+
+      // Si es solo stock bajo
+      if (filtros?.soloStockBajo) {
+        if (!filtros?.incluirCeros || filtros?.stockMinimo) {
+          // Ya hay un HAVING, usar andHaving
+          queryBuilder = queryBuilder.andHaving(`${stockCalculation} <= 10`);
+        } else {
+          // Primer HAVING
+          queryBuilder = queryBuilder.having(`${stockCalculation} <= 10`);
+        }
+      }
+
+      queryBuilder = queryBuilder
+        .orderBy('producto.codigo', 'ASC')
+        .addOrderBy('bodega.nombre', 'ASC');
+
+      const inventario = await queryBuilder.getRawMany();
+
+      // Calcular estadÃƒÂ­sticas
+      const estadisticas = {
+        totalProductosDiferentes: new Set(
+          inventario.map((item) => item.productoId),
+        ).size,
+        totalBodegas: new Set(inventario.map((item) => item.bodegaId)).size,
+        stockTotalUnidades: inventario.reduce(
+          (sum, item) => sum + parseFloat(item.stock),
+          0,
+        ),
+        totalRegistros: inventario.length,
+        productosStockBajo: inventario.filter(
+          (item) => parseFloat(item.stock) <= 10,
+        ).length,
+        ultimaActualizacion: new Date().toISOString(),
+      };
+
+      // Resumen por bodega
+      const resumenPorBodega = inventario.reduce((acc, item) => {
+        const bodegaId = parseInt(item.bodegaId);
+        if (!acc[bodegaId]) {
+          acc[bodegaId] = {
+            bodega: {
+              id: bodegaId,
+              nombre: item.bodegaNombre,
+              ubicacion: item.bodegaUbicacion,
+            },
+            totalProductos: 0,
+            stockTotal: 0,
+          };
+        }
+        acc[bodegaId].totalProductos++;
+        acc[bodegaId].stockTotal += parseFloat(item.stock);
+        return acc;
+      }, {});
+
+      // Resumen por producto (stock total en todas las bodegas)
+      const resumenPorProducto = inventario.reduce((acc, item) => {
+        const productoId = parseInt(item.productoId);
+        if (!acc[productoId]) {
+          acc[productoId] = {
+            producto: {
+              id: productoId,
+              codigo: item.productoCodigo,
+              descripcion: item.productoDescripcion,
+              unidadMedida: item.unidadMedida,
+            },
+            stockTotal: 0,
+            bodegas: 0,
+            ultimoMovimiento: item.ultimoMovimiento,
+          };
+        }
+        acc[productoId].stockTotal += parseFloat(item.stock);
+        acc[productoId].bodegas++;
+
+        // Mantener el ÃƒÂºltimo movimiento mÃƒÂ¡s reciente
+        if (
+          new Date(item.ultimoMovimiento) >
+          new Date(acc[productoId].ultimoMovimiento || '1970-01-01')
+        ) {
+          acc[productoId].ultimoMovimiento = item.ultimoMovimiento;
+        }
+
+        return acc;
+      }, {});
 
       return {
         inventario: inventario.map((item) => ({
@@ -678,35 +710,118 @@ export class MovimientosService {
     id: number,
     updateMovimientoDto: UpdateMovimientoDto,
   ): Promise<Movimiento> {
-    const movimiento = await this.findOne(id);
-    const { cantidad, precio, observacion } = updateMovimientoDto;
-
-    // Si se actualiza la cantidad en una salida, validar stock
-    if (
-      cantidad &&
-      movimiento.tipo === 'salida' &&
-      cantidad !== movimiento.cantidad
-    ) {
-      const stockDisponible = await this.getStockProductoBodega(
-        movimiento.producto.id,
-        movimiento.bodega.id,
-      );
-      // Stock disponible + cantidad actual del movimiento (ya que se va a cambiar)
-      const stockTotal = stockDisponible + movimiento.cantidad;
-
-      if (stockTotal < cantidad) {
-        throw new BadRequestException(
-          `Stock insuficiente para la nueva cantidad. Stock disponible: ${stockTotal}, solicitado: ${cantidad}`,
-        );
-      }
-    }
-
-    if (cantidad) movimiento.cantidad = cantidad;
-    if (precio !== undefined) movimiento.precio = precio;
-    if (observacion !== undefined) movimiento.observacion = observacion;
-
     return this.executeWithTransaction(async (manager) => {
-      return manager.getRepository(Movimiento).save(movimiento);
+      const movimientoRepository = manager.getRepository(Movimiento);
+      const bodegaRepository = manager.getRepository(Bodega);
+
+      const movimiento = await movimientoRepository.findOne({
+        where: { id },
+        relations: [
+          'producto',
+          'producto.unidadMedida',
+          'bodega',
+          'usuario',
+          'cliente',
+        ],
+      });
+
+      if (!movimiento) {
+        throw new NotFoundException(`Movimiento con ID ${id} no encontrado`);
+      }
+
+      const { cantidad, precio, observacion, bodegaId } = updateMovimientoDto;
+      const bodegaAnteriorId = movimiento.bodega.id;
+      const nuevaBodegaId = bodegaId ?? bodegaAnteriorId;
+      const cantidadFinal = cantidad ?? movimiento.cantidad;
+
+      let nuevaBodega = movimiento.bodega;
+      if (bodegaId !== undefined && bodegaId !== bodegaAnteriorId) {
+        nuevaBodega = await bodegaRepository.findOne({
+          where: { id: bodegaId },
+        });
+
+        if (!nuevaBodega) {
+          throw new NotFoundException(
+            `Bodega con ID ${bodegaId} no encontrada en ${this.getCurrentTenant()}`,
+          );
+        }
+      }
+
+      const bodegaCambioReal =
+        bodegaId !== undefined && bodegaId !== bodegaAnteriorId;
+
+      if (
+        movimiento.tipo === 'salida' &&
+        (cantidad !== undefined || bodegaCambioReal)
+      ) {
+        if (!bodegaCambioReal) {
+          const stockDisponible = await this.getStockProductoBodegaWithManager(
+            manager,
+            movimiento.producto.id,
+            bodegaAnteriorId,
+          );
+          const stockTotal = stockDisponible + movimiento.cantidad;
+
+          if (stockTotal < cantidadFinal) {
+            throw new BadRequestException(
+              `Stock insuficiente para la nueva cantidad. Stock disponible: ${stockTotal}, solicitado: ${cantidadFinal}`,
+            );
+          }
+        } else {
+          const stockDisponibleNuevaBodega =
+            await this.getStockProductoBodegaWithManager(
+              manager,
+              movimiento.producto.id,
+              nuevaBodegaId,
+            );
+
+          if (stockDisponibleNuevaBodega < cantidadFinal) {
+            throw new BadRequestException(
+              `Stock insuficiente en la nueva bodega. Stock disponible: ${stockDisponibleNuevaBodega}, solicitado: ${cantidadFinal}`,
+            );
+          }
+        }
+      }
+
+      const cambios: string[] = [];
+
+      if (cantidad !== undefined && cantidad !== movimiento.cantidad) {
+        cambios.push(`cantidad ${movimiento.cantidad} -> ${cantidad}`);
+        movimiento.cantidad = cantidad;
+      }
+
+      if (precio !== undefined && precio !== movimiento.precio) {
+        cambios.push(`precio ${movimiento.precio} -> ${precio}`);
+        movimiento.precio = precio;
+      }
+
+      if (observacion !== undefined && observacion !== movimiento.observacion) {
+        cambios.push('observacion actualizada');
+        movimiento.observacion = observacion;
+      }
+
+      if (bodegaCambioReal) {
+        cambios.push(`bodega ${bodegaAnteriorId} -> ${bodegaId}`);
+        movimiento.bodega = nuevaBodega;
+      }
+
+      const savedMovimiento = await movimientoRepository.save(movimiento);
+
+      const usuario = (this.request as any).user;
+      console.log(
+        `Ã°Å¸â€œÂ AuditorÃƒÂ­a movimiento ${id} actualizado por ${usuario?.correo ?? usuario?.sub ?? 'desconocido'} en ${this.getCurrentTenant()}: ${cambios.length > 0 ? cambios.join(', ') : 'sin cambios efectivos'}`,
+      );
+
+      return movimientoRepository.findOne({
+        where: { id: savedMovimiento.id },
+        relations: [
+          'producto',
+          'producto.unidadMedida',
+          'bodega',
+          'usuario',
+          'cliente',
+        ],
+      });
     });
   }
 
@@ -727,29 +842,37 @@ export class MovimientosService {
 
     const entradasData = entradas.map((mov) => ({
       Fecha: new Date(mov.fecha).toLocaleDateString('es-ES'),
-      'Código Producto': mov.producto.codigo,
-      'Descripción Producto': mov.producto.descripcion,
+      'Codigo Producto': mov.producto.codigo,
+      'Descripcion Producto': mov.producto.descripcion,
       'Cliente/Proveedor': mov.cliente ? mov.cliente.nombre : 'Sin cliente',
       Cantidad: mov.cantidad,
       'Unidad Medida': mov.producto.unidadMedida?.nombre || 'Sin unidad',
       Bodega: mov.bodega.nombre,
-      Observación: mov.observacion || '',
+      Observacion: mov.observacion || '',
     }));
 
     const salidasData = salidas.map((mov) => ({
       Fecha: new Date(mov.fecha).toLocaleDateString('es-ES'),
-      'Código Producto': mov.producto.codigo,
-      'Descripción Producto': mov.producto.descripcion,
+      'Codigo Producto': mov.producto.codigo,
+      'Descripcion Producto': mov.producto.descripcion,
       'Cliente/Proveedor': mov.cliente ? mov.cliente.nombre : 'Sin cliente',
       Cantidad: mov.cantidad,
       'Unidad Medida': mov.producto.unidadMedida?.nombre || 'Sin unidad',
       Bodega: mov.bodega.nombre,
-      Observación: mov.observacion || '',
+      Observacion: mov.observacion || '',
     }));
 
-    // Crear hojas con diseño mejorado
-    const entradasWorksheet = this.createStyledWorksheet(entradasData, 'ENTRADAS DE INVENTARIO', '#4CAF50');
-    const salidasWorksheet = this.createStyledWorksheet(salidasData, 'SALIDAS DE INVENTARIO', '#F44336');
+    // Crear hojas con diseÃƒÂ±o mejorado
+    const entradasWorksheet = this.createStyledWorksheet(
+      entradasData,
+      'ENTRADAS DE INVENTARIO',
+      '#4CAF50',
+    );
+    const salidasWorksheet = this.createStyledWorksheet(
+      salidasData,
+      'SALIDAS DE INVENTARIO',
+      '#F44336',
+    );
 
     XLSX.utils.book_append_sheet(workbook, entradasWorksheet, 'Entradas');
     XLSX.utils.book_append_sheet(workbook, salidasWorksheet, 'Salidas');
@@ -757,42 +880,49 @@ export class MovimientosService {
     return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
   }
 
-  private createStyledWorksheet(data: any[], title: string, headerColor: string) {
-    // Crear hoja con título primero, luego agregar datos
+  private createStyledWorksheet(
+    data: any[],
+    title: string,
+    headerColor: string,
+  ) {
+    // Crear hoja con tÃƒÂ­tulo primero, luego agregar datos
     const worksheet = XLSX.utils.aoa_to_sheet([[title]]);
-    
-    // Agregar una fila vacía después del título
+
+    // Agregar una fila vacÃƒÂ­a despuÃƒÂ©s del tÃƒÂ­tulo
     XLSX.utils.sheet_add_aoa(worksheet, [[]], { origin: 'A2' });
-    
+
     // Agregar datos empezando desde la fila 3
     if (data.length > 0) {
-      XLSX.utils.sheet_add_json(worksheet, data, { origin: 'A3', skipHeader: false });
+      XLSX.utils.sheet_add_json(worksheet, data, {
+        origin: 'A3',
+        skipHeader: false,
+      });
     }
 
     // Configurar anchos de columnas
     const columnWidths = [
       { wch: 12 }, // Fecha
-      { wch: 15 }, // Código
-      { wch: 35 }, // Descripción
+      { wch: 15 }, // CÃƒÂ³digo
+      { wch: 35 }, // DescripciÃƒÂ³n
       { wch: 25 }, // Cliente/Proveedor
       { wch: 10 }, // Cantidad
       { wch: 15 }, // Unidad
       { wch: 20 }, // Bodega
-      { wch: 30 }, // Observación
+      { wch: 30 }, // ObservaciÃƒÂ³n
     ];
     worksheet['!cols'] = columnWidths;
 
     // Obtener el rango de datos
     const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
 
-    // Mergear celdas para el título
+    // Mergear celdas para el tÃƒÂ­tulo
     if (!worksheet['!merges']) worksheet['!merges'] = [];
     worksheet['!merges'].push({
       s: { r: 0, c: 0 },
-      e: { r: 0, c: 7 }
+      e: { r: 0, c: 7 },
     });
 
-    // Estilo para el título
+    // Estilo para el tÃƒÂ­tulo
     const titleStyle = {
       font: { bold: true, size: 16, color: { rgb: '2C3E50' } },
       alignment: { horizontal: 'center', vertical: 'center' },
@@ -804,7 +934,7 @@ export class MovimientosService {
         right: { style: 'medium', color: { rgb: '2C3E50' } },
       },
     };
-    
+
     if (worksheet['A1']) {
       worksheet['A1'].s = titleStyle;
     }
@@ -841,7 +971,7 @@ export class MovimientosService {
     };
 
     if (data.length > 0) {
-      // Aplicar estilos a las cabeceras (fila 3, índice 2)
+      // Aplicar estilos a las cabeceras (fila 3, ÃƒÂ­ndice 2)
       for (let col = 0; col <= 7; col++) {
         const cellAddress = XLSX.utils.encode_cell({ r: 2, c: col });
         if (worksheet[cellAddress]) {
@@ -849,23 +979,27 @@ export class MovimientosService {
         }
       }
 
-      // Aplicar estilos a las celdas de datos (desde fila 4, índice 3)
+      // Aplicar estilos a las celdas de datos (desde fila 4, ÃƒÂ­ndice 3)
       for (let row = 3; row <= range.e.r; row++) {
         const isAlternate = (row - 3) % 2 === 0;
         for (let col = 0; col <= 7; col++) {
           const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
           if (worksheet[cellAddress]) {
             // Aplicar estilo base
-            worksheet[cellAddress].s = isAlternate ? alternateRowStyle : dataStyle;
-            
-            // Estilos especiales para columnas específicas
-            if (col === 4) { // Columna Cantidad
+            worksheet[cellAddress].s = isAlternate
+              ? alternateRowStyle
+              : dataStyle;
+
+            // Estilos especiales para columnas especÃƒÂ­ficas
+            if (col === 4) {
+              // Columna Cantidad
               worksheet[cellAddress].s = {
                 ...worksheet[cellAddress].s,
                 alignment: { horizontal: 'right', vertical: 'center' },
                 numFmt: '#,##0.00',
               };
-            } else if (col === 0) { // Columna Fecha
+            } else if (col === 0) {
+              // Columna Fecha
               worksheet[cellAddress].s = {
                 ...worksheet[cellAddress].s,
                 alignment: { horizontal: 'center', vertical: 'center' },
@@ -878,10 +1012,10 @@ export class MovimientosService {
 
     // Configurar altura de filas
     if (!worksheet['!rows']) worksheet['!rows'] = [];
-    worksheet['!rows'][0] = { hpx: 30 }; // Título
-    worksheet['!rows'][1] = { hpx: 10 }; // Fila vacía
+    worksheet['!rows'][0] = { hpx: 30 }; // TÃƒÂ­tulo
+    worksheet['!rows'][1] = { hpx: 10 }; // Fila vacÃƒÂ­a
     worksheet['!rows'][2] = { hpx: 25 }; // Cabeceras
-    
+
     // Altura para filas de datos
     for (let i = 3; i <= range.e.r; i++) {
       worksheet['!rows'][i] = { hpx: 20 };
@@ -890,13 +1024,19 @@ export class MovimientosService {
     return worksheet;
   }
 
-  async generateInventarioExcelReport(queryDto: InventarioExcelQueryDto): Promise<Buffer> {
+  async generateInventarioExcelReport(
+    queryDto: InventarioExcelQueryDto,
+  ): Promise<Buffer> {
     const inventarioData = await this.getInventarioForExcel(queryDto);
 
     const workbook = XLSX.utils.book_new();
 
-    // Crear hoja de inventario con diseño mejorado
-    const inventarioWorksheet = this.createInventarioStyledWorksheet(inventarioData, 'REPORTE DE INVENTARIO', '#2196F3');
+    // Crear hoja de inventario con diseÃƒÂ±o mejorado
+    const inventarioWorksheet = this.createInventarioStyledWorksheet(
+      inventarioData,
+      'REPORTE DE INVENTARIO',
+      '#2196F3',
+    );
 
     XLSX.utils.book_append_sheet(workbook, inventarioWorksheet, 'Inventario');
 
@@ -929,7 +1069,7 @@ export class MovimientosService {
       // Aplicar filtro de bodega si se especifica
       if (queryDto.bodegaId) {
         queryBuilder = queryBuilder.andWhere('bodega.id = :bodegaId', {
-          bodegaId: queryDto.bodegaId
+          bodegaId: queryDto.bodegaId,
         });
       }
 
@@ -937,29 +1077,36 @@ export class MovimientosService {
 
       return resultado.map((item) => ({
         'CODIGO PRODUCTO': item.codigoProducto,
-        'DESCRIPCION': item.descripcion,
-        'BODEGA': item.bodega,
-        'MEDIDA': item.medida || 'Sin unidad',
-        'ENTRADAS': parseFloat(item.entradas) || 0,
-        'SALIDAS': parseFloat(item.salidas) || 0,
-        'STOCK': parseFloat(item.stock) || 0,
+        DESCRIPCION: item.descripcion,
+        BODEGA: item.bodega,
+        MEDIDA: item.medida || 'Sin unidad',
+        ENTRADAS: parseFloat(item.entradas) || 0,
+        SALIDAS: parseFloat(item.salidas) || 0,
+        STOCK: parseFloat(item.stock) || 0,
       }));
     });
   }
 
-  private createInventarioStyledWorksheet(data: any[], title: string, headerColor: string) {
-    // Crear hoja con título primero
+  private createInventarioStyledWorksheet(
+    data: any[],
+    title: string,
+    headerColor: string,
+  ) {
+    // Crear hoja con tÃƒÂ­tulo primero
     const worksheet = XLSX.utils.aoa_to_sheet([[title]]);
-    
-    // Agregar una fila vacía después del título
+
+    // Agregar una fila vacÃƒÂ­a despuÃƒÂ©s del tÃƒÂ­tulo
     XLSX.utils.sheet_add_aoa(worksheet, [[]], { origin: 'A2' });
-    
+
     // Agregar datos empezando desde la fila 3
     if (data.length > 0) {
-      XLSX.utils.sheet_add_json(worksheet, data, { origin: 'A3', skipHeader: false });
+      XLSX.utils.sheet_add_json(worksheet, data, {
+        origin: 'A3',
+        skipHeader: false,
+      });
     }
 
-    // Configurar anchos de columnas específicos para inventario
+    // Configurar anchos de columnas especÃƒÂ­ficos para inventario
     const columnWidths = [
       { wch: 18 }, // CODIGO PRODUCTO
       { wch: 40 }, // DESCRIPCION
@@ -974,14 +1121,14 @@ export class MovimientosService {
     // Obtener el rango de datos
     const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
 
-    // Mergear celdas para el título
+    // Mergear celdas para el tÃƒÂ­tulo
     if (!worksheet['!merges']) worksheet['!merges'] = [];
     worksheet['!merges'].push({
       s: { r: 0, c: 0 },
-      e: { r: 0, c: 6 }
+      e: { r: 0, c: 6 },
     });
 
-    // Estilo para el título
+    // Estilo para el tÃƒÂ­tulo
     const titleStyle = {
       font: { bold: true, size: 16, color: { rgb: '2C3E50' } },
       alignment: { horizontal: 'center', vertical: 'center' },
@@ -993,7 +1140,7 @@ export class MovimientosService {
         right: { style: 'medium', color: { rgb: '2C3E50' } },
       },
     };
-    
+
     if (worksheet['A1']) {
       worksheet['A1'].s = titleStyle;
     }
@@ -1037,7 +1184,7 @@ export class MovimientosService {
     };
 
     if (data.length > 0) {
-      // Aplicar estilos a las cabeceras (fila 3, índice 2)
+      // Aplicar estilos a las cabeceras (fila 3, ÃƒÂ­ndice 2)
       for (let col = 0; col <= 6; col++) {
         const cellAddress = XLSX.utils.encode_cell({ r: 2, c: col });
         if (worksheet[cellAddress]) {
@@ -1045,13 +1192,15 @@ export class MovimientosService {
         }
       }
 
-      // Aplicar estilos a las celdas de datos (desde fila 4, índice 3)
+      // Aplicar estilos a las celdas de datos (desde fila 4, ÃƒÂ­ndice 3)
       for (let row = 3; row <= range.e.r; row++) {
         const isAlternate = (row - 3) % 2 === 0;
-        
+
         // Obtener el valor del stock para determinar el estilo
         const stockCellAddress = XLSX.utils.encode_cell({ r: row, c: 6 });
-        const stockValue = worksheet[stockCellAddress] ? parseFloat(worksheet[stockCellAddress].v) : 0;
+        const stockValue = worksheet[stockCellAddress]
+          ? parseFloat(worksheet[stockCellAddress].v)
+          : 0;
         const isLowStock = stockValue < 10;
 
         for (let col = 0; col <= 6; col++) {
@@ -1061,17 +1210,21 @@ export class MovimientosService {
             if (isLowStock) {
               worksheet[cellAddress].s = lowStockStyle;
             } else {
-              worksheet[cellAddress].s = isAlternate ? alternateRowStyle : dataStyle;
+              worksheet[cellAddress].s = isAlternate
+                ? alternateRowStyle
+                : dataStyle;
             }
-            
-            // Estilos especiales para columnas específicas
-            if (col >= 4 && col <= 6) { // Columnas ENTRADAS, SALIDAS, STOCK
+
+            // Estilos especiales para columnas especÃƒÂ­ficas
+            if (col >= 4 && col <= 6) {
+              // Columnas ENTRADAS, SALIDAS, STOCK
               worksheet[cellAddress].s = {
                 ...worksheet[cellAddress].s,
                 alignment: { horizontal: 'right', vertical: 'center' },
                 numFmt: '#,##0.00',
               };
-            } else if (col === 0) { // Columna CODIGO PRODUCTO
+            } else if (col === 0) {
+              // Columna CODIGO PRODUCTO
               worksheet[cellAddress].s = {
                 ...worksheet[cellAddress].s,
                 alignment: { horizontal: 'center', vertical: 'center' },
@@ -1084,10 +1237,10 @@ export class MovimientosService {
 
     // Configurar altura de filas
     if (!worksheet['!rows']) worksheet['!rows'] = [];
-    worksheet['!rows'][0] = { hpx: 30 }; // Título
-    worksheet['!rows'][1] = { hpx: 10 }; // Fila vacía
+    worksheet['!rows'][0] = { hpx: 30 }; // TÃƒÂ­tulo
+    worksheet['!rows'][1] = { hpx: 10 }; // Fila vacÃƒÂ­a
     worksheet['!rows'][2] = { hpx: 25 }; // Cabeceras
-    
+
     // Altura para filas de datos
     for (let i = 3; i <= range.e.r; i++) {
       worksheet['!rows'][i] = { hpx: 20 };
@@ -1172,11 +1325,15 @@ export class MovimientosService {
     bodegaId: number,
   ): Promise<number> {
     return this.executeWithTenant(async (manager) => {
-      return this.getStockProductoBodegaWithManager(manager, productoId, bodegaId);
+      return this.getStockProductoBodegaWithManager(
+        manager,
+        productoId,
+        bodegaId,
+      );
     });
   }
 
-  // Método helper para usar dentro de transacciones
+  // MÃƒÂ©todo helper para usar dentro de transacciones
   private async getStockProductoBodegaWithManager(
     manager: any,
     productoId: number,
@@ -1205,12 +1362,8 @@ export class MovimientosService {
     entradas: Movimiento[];
     mensaje: string;
   }> {
-    const {
-      productoOrigenId,
-      bodegaId,
-      cantidadTotal,
-      productosDestino,
-    } = dividirProductoDto;
+    const { productoOrigenId, bodegaId, cantidadTotal, productosDestino } =
+      dividirProductoDto;
 
     return this.executeWithTransaction(async (manager) => {
       const productoRepository = manager.getRepository(Producto);
@@ -1284,7 +1437,7 @@ export class MovimientosService {
         tipo: 'salida',
         cantidad: cantidadTotal,
         precio: 0,
-        observacion: `División de producto combo - ${productosDestino.length} productos destino`,
+        observacion: `DivisiÃƒÂ³n de producto combo - ${productosDestino.length} productos destino`,
         producto: productoOrigen,
         bodega,
         usuario,
@@ -1294,7 +1447,7 @@ export class MovimientosService {
       const salidaGuardada = await movimientoRepository.save(movimientoSalida);
 
       console.log(
-        `🔄 División: Salida de ${cantidadTotal} ${productoOrigen.codigo} en ${bodega.nombre}`,
+        `Ã°Å¸â€â€ž DivisiÃƒÂ³n: Salida de ${cantidadTotal} ${productoOrigen.codigo} en ${bodega.nombre}`,
       );
 
       // 7. Crear las entradas de los productos destino
@@ -1304,20 +1457,19 @@ export class MovimientosService {
           tipo: 'entrada',
           cantidad: destino.cantidad,
           precio: 0,
-          observacion: `División desde producto combo ${productoOrigen.codigo} (ID: ${productoOrigenId})`,
+          observacion: `DivisiÃƒÂ³n desde producto combo ${productoOrigen.codigo} (ID: ${productoOrigenId})`,
           producto: destino.producto,
           bodega,
           usuario,
           cliente: null,
         });
 
-        const entradaGuardada = await movimientoRepository.save(
-          movimientoEntrada,
-        );
+        const entradaGuardada =
+          await movimientoRepository.save(movimientoEntrada);
         entradasGuardadas.push(entradaGuardada);
 
         console.log(
-          `🔄 División: Entrada de ${destino.cantidad} ${destino.producto.codigo} en ${bodega.nombre}`,
+          `Ã°Å¸â€â€ž DivisiÃƒÂ³n: Entrada de ${destino.cantidad} ${destino.producto.codigo} en ${bodega.nombre}`,
         );
       }
 
@@ -1349,13 +1501,13 @@ export class MovimientosService {
       );
 
       console.log(
-        `✅ División completada: 1 salida + ${entradasCompletas.length} entradas en ${this.getCurrentTenant()}`,
+        `Ã¢Å“â€¦ DivisiÃƒÂ³n completada: 1 salida + ${entradasCompletas.length} entradas en ${this.getCurrentTenant()}`,
       );
 
       return {
         salida: salidaCompleta,
         entradas: entradasCompletas,
-        mensaje: `División completada: Se descontaron ${cantidadTotal} unidades de ${productoOrigen.codigo} y se agregaron ${productosDestino.length} productos destino`,
+        mensaje: `DivisiÃƒÂ³n completada: Se descontaron ${cantidadTotal} unidades de ${productoOrigen.codigo} y se agregaron ${productosDestino.length} productos destino`,
       };
     });
   }
@@ -1439,7 +1591,7 @@ export class MovimientosService {
           cantidad: ingrediente.cantidad,
         });
 
-        // Sumar las cantidades para saber cuánto combo se creará
+        // Sumar las cantidades para saber cuÃƒÂ¡nto combo se crearÃƒÂ¡
         cantidadTotalCombo += ingrediente.cantidad;
       }
 
@@ -1457,13 +1609,12 @@ export class MovimientosService {
           cliente: null,
         });
 
-        const salidaGuardada = await movimientoRepository.save(
-          movimientoSalida,
-        );
+        const salidaGuardada =
+          await movimientoRepository.save(movimientoSalida);
         salidasGuardadas.push(salidaGuardada);
 
         console.log(
-          `🔄 Combo: Salida de ${ingrediente.cantidad} ${ingrediente.producto.codigo} en ${bodega.nombre}`,
+          `Ã°Å¸â€â€ž Combo: Salida de ${ingrediente.cantidad} ${ingrediente.producto.codigo} en ${bodega.nombre}`,
         );
       }
 
@@ -1479,12 +1630,11 @@ export class MovimientosService {
         cliente: null,
       });
 
-      const entradaGuardada = await movimientoRepository.save(
-        movimientoEntrada,
-      );
+      const entradaGuardada =
+        await movimientoRepository.save(movimientoEntrada);
 
       console.log(
-        `🔄 Combo: Entrada de ${cantidadTotalCombo} ${productoCombo.codigo} en ${bodega.nombre}`,
+        `Ã°Å¸â€â€ž Combo: Entrada de ${cantidadTotalCombo} ${productoCombo.codigo} en ${bodega.nombre}`,
       );
 
       // 7. Cargar las relaciones completas para la respuesta
@@ -1515,7 +1665,7 @@ export class MovimientosService {
       });
 
       console.log(
-        `✅ Combo creado: ${salidasCompletas.length} salidas + 1 entrada de ${cantidadTotalCombo} unidades en ${this.getCurrentTenant()}`,
+        `Ã¢Å“â€¦ Combo creado: ${salidasCompletas.length} salidas + 1 entrada de ${cantidadTotalCombo} unidades en ${this.getCurrentTenant()}`,
       );
 
       return {
@@ -1548,48 +1698,49 @@ export class MovimientosService {
 
       const workbook = XLSX.utils.book_new();
 
-      // 1. Hoja de PLANTILLA MOVIMIENTOS (donde llenarán los datos)
+      // 1. Hoja de PLANTILLA MOVIMIENTOS (donde llenarÃƒÂ¡n los datos)
       const plantillaData = [
         {
-          'TIPO': 'entrada',
+          TIPO: 'entrada',
           'CODIGO PRODUCTO': productos[0]?.codigo || 'PROD-001',
-          'PRODUCTO (AUTO)': '',  // Se llenará con fórmula
-          'CANTIDAD': 10,
-          'PRECIO': 100,
+          'PRODUCTO (AUTO)': '', // Se llenarÃƒÂ¡ con fÃƒÂ³rmula
+          CANTIDAD: 10,
+          PRECIO: 100,
           'ID BODEGA': bodegas[0]?.id || 1,
-          'BODEGA (AUTO)': '',  // Se llenará con fórmula
+          'BODEGA (AUTO)': '', // Se llenarÃƒÂ¡ con fÃƒÂ³rmula
           'ID CLIENTE': clientes[0]?.id || '',
-          'OBSERVACION': 'Ejemplo de entrada',
+          OBSERVACION: 'Ejemplo de entrada',
         },
         {
-          'TIPO': 'salida',
+          TIPO: 'salida',
           'CODIGO PRODUCTO': productos[0]?.codigo || 'PROD-001',
-          'PRODUCTO (AUTO)': '',  // Se llenará con fórmula
-          'CANTIDAD': 5,
-          'PRECIO': 0,
+          'PRODUCTO (AUTO)': '', // Se llenarÃƒÂ¡ con fÃƒÂ³rmula
+          CANTIDAD: 5,
+          PRECIO: 0,
           'ID BODEGA': bodegas[0]?.id || 1,
-          'BODEGA (AUTO)': '',  // Se llenará con fórmula
+          'BODEGA (AUTO)': '', // Se llenarÃƒÂ¡ con fÃƒÂ³rmula
           'ID CLIENTE': clientes[1]?.id || '',
-          'OBSERVACION': 'Ejemplo de salida',
+          OBSERVACION: 'Ejemplo de salida',
         },
       ];
 
       const plantillaSheet = XLSX.utils.json_to_sheet(plantillaData);
 
-      // Agregar fórmulas BUSCARV para 50 filas (columnas PRODUCTO AUTO y BODEGA AUTO)
-      for (let i = 2; i <= 51; i++) {  // Filas 2 a 51 (fila 1 es el header)
-        // Columna C: PRODUCTO (AUTO) - Busca el código del producto en columna B
+      // Agregar fÃƒÂ³rmulas BUSCARV para 50 filas (columnas PRODUCTO AUTO y BODEGA AUTO)
+      for (let i = 2; i <= 51; i++) {
+        // Filas 2 a 51 (fila 1 es el header)
+        // Columna C: PRODUCTO (AUTO) - Busca el cÃƒÂ³digo del producto en columna B
         plantillaSheet[`C${i}`] = {
           f: `IFERROR(VLOOKUP(B${i},PRODUCTOS!A:B,2,FALSE),"")`,
           t: 's',
-          v: ''
+          v: '',
         };
 
         // Columna G: BODEGA (AUTO) - Busca el ID de bodega en columna F
         plantillaSheet[`G${i}`] = {
           f: `IFERROR(VLOOKUP(F${i},BODEGAS!A:B,2,FALSE),"")`,
           t: 's',
-          v: ''
+          v: '',
         };
       }
 
@@ -1598,146 +1749,176 @@ export class MovimientosService {
 
       // Configurar anchos de columnas
       plantillaSheet['!cols'] = [
-        { wch: 12 },  // TIPO
-        { wch: 20 },  // CODIGO PRODUCTO
-        { wch: 40 },  // PRODUCTO (AUTO)
-        { wch: 12 },  // CANTIDAD
-        { wch: 12 },  // PRECIO
-        { wch: 15 },  // ID BODEGA
-        { wch: 30 },  // BODEGA (AUTO)
-        { wch: 15 },  // ID CLIENTE
-        { wch: 40 },  // OBSERVACION
+        { wch: 12 }, // TIPO
+        { wch: 20 }, // CODIGO PRODUCTO
+        { wch: 40 }, // PRODUCTO (AUTO)
+        { wch: 12 }, // CANTIDAD
+        { wch: 12 }, // PRECIO
+        { wch: 15 }, // ID BODEGA
+        { wch: 30 }, // BODEGA (AUTO)
+        { wch: 15 }, // ID CLIENTE
+        { wch: 40 }, // OBSERVACION
       ];
 
       XLSX.utils.book_append_sheet(workbook, plantillaSheet, 'PLANTILLA');
 
-      // 2. Hoja de PRODUCTOS (catálogo de referencia)
+      // 2. Hoja de PRODUCTOS (catÃƒÂ¡logo de referencia)
       const productosData = productos.map((p) => ({
-        'CODIGO': p.codigo,
-        'DESCRIPCION': p.descripcion,
+        CODIGO: p.codigo,
+        DESCRIPCION: p.descripcion,
         'UNIDAD MEDIDA': p.unidadMedida?.nombre || 'Sin unidad',
       }));
 
       const productosSheet = XLSX.utils.json_to_sheet(productosData);
       productosSheet['!cols'] = [
-        { wch: 20 },  // CODIGO
-        { wch: 50 },  // DESCRIPCION
-        { wch: 15 },  // UNIDAD MEDIDA
+        { wch: 20 }, // CODIGO
+        { wch: 50 }, // DESCRIPCION
+        { wch: 15 }, // UNIDAD MEDIDA
       ];
 
       XLSX.utils.book_append_sheet(workbook, productosSheet, 'PRODUCTOS');
 
-      // 3. Hoja de BODEGAS (catálogo de referencia)
+      // 3. Hoja de BODEGAS (catÃƒÂ¡logo de referencia)
       const bodegasData = bodegas.map((b) => ({
-        'ID': b.id,
-        'NOMBRE': b.nombre,
-        'UBICACION': b.ubicacion || 'Sin ubicación',
+        ID: b.id,
+        NOMBRE: b.nombre,
+        UBICACION: b.ubicacion || 'Sin ubicaciÃƒÂ³n',
       }));
 
       const bodegasSheet = XLSX.utils.json_to_sheet(bodegasData);
       bodegasSheet['!cols'] = [
-        { wch: 10 },  // ID
-        { wch: 30 },  // NOMBRE
-        { wch: 30 },  // UBICACION
+        { wch: 10 }, // ID
+        { wch: 30 }, // NOMBRE
+        { wch: 30 }, // UBICACION
       ];
 
       XLSX.utils.book_append_sheet(workbook, bodegasSheet, 'BODEGAS');
 
-      // 4. Hoja de CLIENTES (catálogo de referencia)
+      // 4. Hoja de CLIENTES (catÃƒÂ¡logo de referencia)
       const clientesData = clientes.map((c) => ({
-        'ID': c.id,
-        'NOMBRE': c.nombre,
-        'TIPO': c.tipo,
-        'TELEFONO': c.telefono || 'Sin teléfono',
+        ID: c.id,
+        NOMBRE: c.nombre,
+        TIPO: c.tipo,
+        TELEFONO: c.telefono || 'Sin telÃƒÂ©fono',
       }));
 
       const clientesSheet = XLSX.utils.json_to_sheet(clientesData);
       clientesSheet['!cols'] = [
-        { wch: 10 },  // ID
-        { wch: 35 },  // NOMBRE
-        { wch: 15 },  // TIPO
-        { wch: 20 },  // TELEFONO
+        { wch: 10 }, // ID
+        { wch: 35 }, // NOMBRE
+        { wch: 15 }, // TIPO
+        { wch: 20 }, // TELEFONO
       ];
 
       XLSX.utils.book_append_sheet(workbook, clientesSheet, 'CLIENTES');
 
       // 5. Hoja de INSTRUCCIONES
       const instruccionesData = [
-        ['📋 INSTRUCCIONES PARA USAR LA PLANTILLA'],
+        ['Ã°Å¸â€œâ€¹ INSTRUCCIONES PARA USAR LA PLANTILLA'],
         [''],
         ['1. Use la hoja "PLANTILLA" para registrar los movimientos'],
         ['2. Borre los ejemplos y agregue sus propios movimientos'],
         [''],
-        ['3. CÓMO LLENAR CADA COLUMNA:'],
+        ['3. CÃƒâ€œMO LLENAR CADA COLUMNA:'],
         [''],
-        ['   ✅ TIPO:'],
+        ['   Ã¢Å“â€¦ TIPO:'],
         ['      - Escriba "entrada" o "salida"'],
         [''],
-        ['   ✅ CODIGO PRODUCTO:'],
+        ['   Ã¢Å“â€¦ CODIGO PRODUCTO:'],
         ['      - Vaya a la hoja PRODUCTOS'],
         ['      - Use Ctrl+F para buscar el producto que necesita'],
-        ['      - Copie SOLO el código (ejemplo: PROD-001)'],
+        ['      - Copie SOLO el cÃƒÂ³digo (ejemplo: PROD-001)'],
         [''],
-        ['   ✨ PRODUCTO (AUTO):'],
-        ['      - ¡NO ESCRIBA NADA AQUÍ!'],
-        ['      - Esta columna se llena automáticamente con el nombre del producto'],
-        ['      - Solo escriba el código en la columna anterior y el nombre aparecerá solo'],
-        ['      - Si aparece vacío, el código del producto no existe'],
+        ['   Ã¢Å“Â¨ PRODUCTO (AUTO):'],
+        ['      - Ã‚Â¡NO ESCRIBA NADA AQUÃƒÂ!'],
+        [
+          '      - Esta columna se llena automÃƒÂ¡ticamente con el nombre del producto',
+        ],
+        [
+          '      - Solo escriba el cÃƒÂ³digo en la columna anterior y el nombre aparecerÃƒÂ¡ solo',
+        ],
+        ['      - Si aparece vacÃƒÂ­o, el cÃƒÂ³digo del producto no existe'],
         [''],
-        ['   ✅ CANTIDAD:'],
-        ['      - Número mayor a 0'],
+        ['   Ã¢Å“â€¦ CANTIDAD:'],
+        ['      - NÃƒÂºmero mayor a 0'],
         [''],
-        ['   ✅ PRECIO:'],
-        ['      - Número (puede ser 0 si no aplica)'],
+        ['   Ã¢Å“â€¦ PRECIO:'],
+        ['      - NÃƒÂºmero (puede ser 0 si no aplica)'],
         [''],
-        ['   ✅ ID BODEGA:'],
+        ['   Ã¢Å“â€¦ ID BODEGA:'],
         ['      - Vaya a la hoja BODEGAS'],
         ['      - Use Ctrl+F para buscar la bodega que necesita'],
-        ['      - Copie SOLO el número del ID (ejemplo: 1)'],
+        ['      - Copie SOLO el nÃƒÂºmero del ID (ejemplo: 1)'],
         [''],
-        ['   ✨ BODEGA (AUTO):'],
-        ['      - ¡NO ESCRIBA NADA AQUÍ!'],
-        ['      - Esta columna se llena automáticamente con el nombre de la bodega'],
-        ['      - Solo escriba el ID en la columna anterior y el nombre aparecerá solo'],
-        ['      - Si aparece vacío, el ID de la bodega no existe'],
+        ['   Ã¢Å“Â¨ BODEGA (AUTO):'],
+        ['      - Ã‚Â¡NO ESCRIBA NADA AQUÃƒÂ!'],
+        [
+          '      - Esta columna se llena automÃƒÂ¡ticamente con el nombre de la bodega',
+        ],
+        [
+          '      - Solo escriba el ID en la columna anterior y el nombre aparecerÃƒÂ¡ solo',
+        ],
+        ['      - Si aparece vacÃƒÂ­o, el ID de la bodega no existe'],
         [''],
-        ['   ✅ ID CLIENTE (opcional):'],
+        ['   Ã¢Å“â€¦ ID CLIENTE (opcional):'],
         ['      - Vaya a la hoja CLIENTES'],
         ['      - Use Ctrl+F para buscar el cliente que necesita'],
-        ['      - Copie SOLO el número del ID (ejemplo: 5)'],
-        ['      - Deje vacío si no hay cliente asociado'],
+        ['      - Copie SOLO el nÃƒÂºmero del ID (ejemplo: 5)'],
+        ['      - Deje vacÃƒÂ­o si no hay cliente asociado'],
         [''],
-        ['   ✅ OBSERVACION (opcional):'],
+        ['   Ã¢Å“â€¦ OBSERVACION (opcional):'],
         ['      - Cualquier texto descriptivo'],
         [''],
         ['4. HOJAS DISPONIBLES PARA CONSULTA:'],
-        ['   - PRODUCTOS: Tabla con todos los productos (busque por código o descripción)'],
+        [
+          '   - PRODUCTOS: Tabla con todos los productos (busque por cÃƒÂ³digo o descripciÃƒÂ³n)',
+        ],
         ['   - BODEGAS: Tabla con todas las bodegas (busque por ID o nombre)'],
-        ['   - CLIENTES: Tabla con todos los clientes (busque por ID o nombre)'],
+        [
+          '   - CLIENTES: Tabla con todos los clientes (busque por ID o nombre)',
+        ],
         [''],
-        ['5. Una vez lleno, guarde el archivo y súbalo al sistema'],
+        ['5. Una vez lleno, guarde el archivo y sÃƒÂºbalo al sistema'],
         [''],
-        ['⚠️ IMPORTANTE:'],
+        ['Ã¢Å¡Â Ã¯Â¸Â IMPORTANTE:'],
         ['   - No modifique los nombres de las columnas en PLANTILLA'],
-        ['   - No borre las fórmulas de las columnas PRODUCTO (AUTO) y BODEGA (AUTO)'],
+        [
+          '   - No borre las fÃƒÂ³rmulas de las columnas PRODUCTO (AUTO) y BODEGA (AUTO)',
+        ],
         ['   - Puede agregar tantas filas como necesite en PLANTILLA'],
-        ['   - Al agregar filas, copie la fila anterior para mantener las fórmulas'],
-        ['   - Las salidas solo se permitirán si hay stock disponible'],
-        ['   - Para productos use CODIGO, para bodegas y clientes use solo el ID (número)'],
+        [
+          '   - Al agregar filas, copie la fila anterior para mantener las fÃƒÂ³rmulas',
+        ],
+        ['   - Las salidas solo se permitirÃƒÂ¡n si hay stock disponible'],
+        [
+          '   - Para productos use CODIGO, para bodegas y clientes use solo el ID (nÃƒÂºmero)',
+        ],
         [''],
-        ['💡 CONSEJO:'],
-        ['   - Use Ctrl+F en cada hoja para buscar rápidamente'],
-        ['   - Puede buscar por nombre y luego copiar el ID o código correspondiente'],
-        ['   - Las columnas AUTO le ayudan a verificar que escribió los códigos/IDs correctos'],
-        ['   - Si las columnas AUTO aparecen vacías, significa que el código/ID no existe'],
+        ['Ã°Å¸â€™Â¡ CONSEJO:'],
+        ['   - Use Ctrl+F en cada hoja para buscar rÃƒÂ¡pidamente'],
+        [
+          '   - Puede buscar por nombre y luego copiar el ID o cÃƒÂ³digo correspondiente',
+        ],
+        [
+          '   - Las columnas AUTO le ayudan a verificar que escribiÃƒÂ³ los cÃƒÂ³digos/IDs correctos',
+        ],
+        [
+          '   - Si las columnas AUTO aparecen vacÃƒÂ­as, significa que el cÃƒÂ³digo/ID no existe',
+        ],
       ];
 
       const instruccionesSheet = XLSX.utils.aoa_to_sheet(instruccionesData);
       instruccionesSheet['!cols'] = [{ wch: 80 }];
 
-      XLSX.utils.book_append_sheet(workbook, instruccionesSheet, 'INSTRUCCIONES');
+      XLSX.utils.book_append_sheet(
+        workbook,
+        instruccionesSheet,
+        'INSTRUCCIONES',
+      );
 
-      console.log(`📋 Plantilla Excel generada para ${this.getCurrentTenant()}`);
+      console.log(
+        `Ã°Å¸â€œâ€¹ Plantilla Excel generada para ${this.getCurrentTenant()}`,
+      );
 
       return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
     });
@@ -1755,24 +1936,28 @@ export class MovimientosService {
     const workbook = XLSX.read(buffer, { type: 'buffer' });
 
     if (!workbook.SheetNames.includes('PLANTILLA')) {
-      throw new BadRequestException('El archivo no contiene la hoja "PLANTILLA"');
+      throw new BadRequestException(
+        'El archivo no contiene la hoja "PLANTILLA"',
+      );
     }
 
     const worksheet = workbook.Sheets['PLANTILLA'];
     const data: any[] = XLSX.utils.sheet_to_json(worksheet);
 
-    // Filtrar filas vacías (solo tienen fórmulas pero no datos)
+    // Filtrar filas vacÃƒÂ­as (solo tienen fÃƒÂ³rmulas pero no datos)
     const dataFiltrada = data.filter((row) => {
       const tipo = row['TIPO']?.toString().trim();
       const codigoProducto = row['CODIGO PRODUCTO']?.toString().trim();
       const cantidad = row['CANTIDAD'];
 
-      // Si al menos tiene tipo, código y cantidad, es una fila válida
+      // Si al menos tiene tipo, cÃƒÂ³digo y cantidad, es una fila vÃƒÂ¡lida
       return tipo && codigoProducto && cantidad;
     });
 
     if (dataFiltrada.length === 0) {
-      throw new BadRequestException('La hoja "PLANTILLA" no contiene movimientos válidos');
+      throw new BadRequestException(
+        'La hoja "PLANTILLA" no contiene movimientos vÃƒÂ¡lidos',
+      );
     }
 
     const movimientosCreados: Movimiento[] = [];
@@ -1792,7 +1977,9 @@ export class MovimientosService {
         where: { id: userId },
       });
       if (!usuario) {
-        throw new NotFoundException(`Usuario con ID ${userId} no encontrado en ${this.getCurrentTenant()}`);
+        throw new NotFoundException(
+          `Usuario con ID ${userId} no encontrado en ${this.getCurrentTenant()}`,
+        );
       }
 
       for (let i = 0; i < dataFiltrada.length; i++) {
@@ -1806,31 +1993,39 @@ export class MovimientosService {
           const cantidad = parseFloat(row['CANTIDAD']);
           const precio = parseFloat(row['PRECIO'] || 0);
           const idBodega = parseInt(row['ID BODEGA']);
-          const idCliente = row['ID CLIENTE'] ? parseInt(row['ID CLIENTE']) : null;
+          const idCliente = row['ID CLIENTE']
+            ? parseInt(row['ID CLIENTE'])
+            : null;
           const observacion = row['OBSERVACION']?.toString().trim() || '';
 
-          // Validaciones básicas
+          // Validaciones bÃƒÂ¡sicas
           if (!tipo || (tipo !== 'entrada' && tipo !== 'salida')) {
-            throw new Error(`Tipo inválido: "${tipo}". Debe ser "entrada" o "salida"`);
+            throw new Error(
+              `Tipo invÃƒÂ¡lido: "${tipo}". Debe ser "entrada" o "salida"`,
+            );
           }
 
           if (!codigoProducto) {
-            throw new Error('Código de producto es requerido');
+            throw new Error('CÃƒÂ³digo de producto es requerido');
           }
 
           if (isNaN(cantidad) || cantidad <= 0) {
-            throw new Error(`Cantidad inválida: ${cantidad}. Debe ser mayor a 0`);
+            throw new Error(
+              `Cantidad invÃƒÂ¡lida: ${cantidad}. Debe ser mayor a 0`,
+            );
           }
 
           if (isNaN(precio) || precio < 0) {
-            throw new Error(`Precio inválido: ${precio}. Debe ser mayor o igual a 0`);
+            throw new Error(
+              `Precio invÃƒÂ¡lido: ${precio}. Debe ser mayor o igual a 0`,
+            );
           }
 
           if (isNaN(idBodega)) {
-            throw new Error('ID de bodega es requerido y debe ser un número');
+            throw new Error('ID de bodega es requerido y debe ser un numero');
           }
 
-          // Buscar producto por código
+          // Buscar producto por cÃƒÂ³digo
           const producto = await productoRepository.findOne({
             where: { codigo: codigoProducto },
             relations: ['unidadMedida'],
@@ -1857,24 +2052,39 @@ export class MovimientosService {
               throw new Error(`Cliente con ID ${idCliente} no encontrado`);
             }
 
-            // Validar tipo de cliente según el movimiento
-            if (tipo === 'entrada' && cliente.tipo !== 'proveedor' && cliente.tipo !== 'ambos') {
-              throw new Error(`Cliente con ID ${idCliente} no es un proveedor válido`);
+            // Validar tipo de cliente segÃƒÂºn el movimiento
+            if (
+              tipo === 'entrada' &&
+              cliente.tipo !== 'proveedor' &&
+              cliente.tipo !== 'ambos'
+            ) {
+              throw new Error(
+                `Cliente con ID ${idCliente} no es un proveedor vÃƒÂ¡lido`,
+              );
             }
-            if (tipo === 'salida' && cliente.tipo !== 'cliente' && cliente.tipo !== 'ambos') {
-              throw new Error(`Cliente con ID ${idCliente} no es un cliente válido`);
+            if (
+              tipo === 'salida' &&
+              cliente.tipo !== 'cliente' &&
+              cliente.tipo !== 'ambos'
+            ) {
+              throw new Error(
+                `Cliente con ID ${idCliente} no es un cliente vÃƒÂ¡lido`,
+              );
             }
           }
 
           // Validar stock para salidas
           if (tipo === 'salida') {
-            const stockDisponible = await this.getStockProductoBodegaWithManager(
-              manager,
-              producto.id,
-              bodega.id,
-            );
+            const stockDisponible =
+              await this.getStockProductoBodegaWithManager(
+                manager,
+                producto.id,
+                bodega.id,
+              );
             if (stockDisponible < cantidad) {
-              throw new Error(`Stock insuficiente. Disponible: ${stockDisponible}, solicitado: ${cantidad}`);
+              throw new Error(
+                `Stock insuficiente. Disponible: ${stockDisponible}, solicitado: ${cantidad}`,
+              );
             }
           }
 
@@ -1890,28 +2100,38 @@ export class MovimientosService {
             cliente,
           });
 
-          const movimientoGuardado = await movimientoRepository.save(movimiento);
+          const movimientoGuardado =
+            await movimientoRepository.save(movimiento);
 
           // Cargar relaciones completas
           const movimientoCompleto = await movimientoRepository.findOne({
             where: { id: movimientoGuardado.id },
-            relations: ['producto', 'producto.unidadMedida', 'bodega', 'usuario', 'cliente'],
+            relations: [
+              'producto',
+              'producto.unidadMedida',
+              'bodega',
+              'usuario',
+              'cliente',
+            ],
           });
 
           movimientosCreados.push(movimientoCompleto);
           exitosos++;
 
-          console.log(`✅ Fila ${rowNumber}: ${tipo} de ${cantidad} ${codigoProducto} en bodega ${bodega.nombre}`);
-
-        } catch (error) {
+          console.log(
+            `Ã¢Å“â€¦ Fila ${rowNumber}: ${tipo} de ${cantidad} ${codigoProducto} en bodega ${bodega.nombre}`,
+          );
+        } catch (error: any) {
           fallidos++;
           const mensajeError = `Fila ${rowNumber}: ${error.message}`;
           errores.push(mensajeError);
-          console.log(`❌ ${mensajeError}`);
+          console.log(`Ã¢ÂÅ’ ${mensajeError}`);
         }
       }
 
-      console.log(`📊 Procesamiento Excel completado en ${this.getCurrentTenant()}: ${exitosos} exitosos, ${fallidos} fallidos`);
+      console.log(
+        `Ã°Å¸â€œÅ  Procesamiento Excel completado en ${this.getCurrentTenant()}: ${exitosos} exitosos, ${fallidos} fallidos`,
+      );
 
       return {
         exitosos,

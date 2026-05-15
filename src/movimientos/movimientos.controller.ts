@@ -51,7 +51,7 @@ export class MovimientosController {
   @Roles('admin', 'bodeguero')
   @ApiOperation({ summary: 'Crear nueva entrada de inventario' })
   @ApiResponse({ status: 201, description: 'Entrada creada exitosamente' })
-  @ApiResponse({ status: 400, description: 'Datos inválidos' })
+  @ApiResponse({ status: 400, description: 'Datos invÃ¡lidos' })
   @ApiResponse({
     status: 404,
     description: 'Producto, bodega o cliente no encontrado',
@@ -73,7 +73,7 @@ export class MovimientosController {
   @ApiResponse({ status: 201, description: 'Salida creada exitosamente' })
   @ApiResponse({
     status: 400,
-    description: 'Datos inválidos o stock insuficiente',
+    description: 'Datos invÃ¡lidos o stock insuficiente',
   })
   @ApiResponse({
     status: 404,
@@ -87,12 +87,12 @@ export class MovimientosController {
   @Post('dividir')
   @Roles('admin', 'bodeguero')
   @ApiOperation({
-    summary: 'Dividir producto combo en múltiples productos destino',
+    summary: 'Dividir producto combo en mÃºltiples productos destino',
   })
   @ApiResponse({
     status: 201,
     description:
-      'División completada: 1 salida del producto origen y N entradas en productos destino',
+      'DivisiÃ³n completada: 1 salida del producto origen y N entradas en productos destino',
     schema: {
       type: 'object',
       properties: {
@@ -107,14 +107,14 @@ export class MovimientosController {
         mensaje: {
           type: 'string',
           example:
-            'División completada: Se descontaron 50 unidades de PROD001 y se agregaron 3 productos destino',
+            'DivisiÃ³n completada: Se descontaron 50 unidades de PROD001 y se agregaron 3 productos destino',
         },
       },
     },
   })
   @ApiResponse({
     status: 400,
-    description: 'Stock insuficiente o datos inválidos',
+    description: 'Stock insuficiente o datos invÃ¡lidos',
   })
   @ApiResponse({
     status: 404,
@@ -161,7 +161,7 @@ export class MovimientosController {
   })
   @ApiResponse({
     status: 400,
-    description: 'Stock insuficiente de ingredientes o datos inválidos',
+    description: 'Stock insuficiente de ingredientes o datos invÃ¡lidos',
   })
   @ApiResponse({
     status: 404,
@@ -190,10 +190,7 @@ export class MovimientosController {
     },
   })
   @ApiResponse({ status: 403, description: 'Sin permisos' })
-  async downloadExcel(
-    @Query() queryDto: ExcelQueryDto,
-    @Res() res: Response,
-  ) {
+  async downloadExcel(@Query() queryDto: ExcelQueryDto, @Res() res: Response) {
     const buffer = await this.movimientosService.generateExcelReport(queryDto);
 
     const fileName = `movimientos_${new Date().toISOString().split('T')[0]}.xlsx`;
@@ -211,7 +208,9 @@ export class MovimientosController {
   @Get('inventario-excel')
   @Roles('admin', 'bodeguero')
   @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ summary: 'Descargar reporte de inventario consolidado en Excel' })
+  @ApiOperation({
+    summary: 'Descargar reporte de inventario consolidado en Excel',
+  })
   @ApiResponse({
     status: 200,
     description: 'Archivo Excel de inventario generado exitosamente',
@@ -230,7 +229,8 @@ export class MovimientosController {
     @Query() queryDto: InventarioExcelQueryDto,
     @Res() res: Response,
   ) {
-    const buffer = await this.movimientosService.generateInventarioExcelReport(queryDto);
+    const buffer =
+      await this.movimientosService.generateInventarioExcelReport(queryDto);
 
     const fileName = `inventario_${new Date().toISOString().split('T')[0]}.xlsx`;
 
@@ -259,10 +259,10 @@ export class MovimientosController {
 
   @Get('producto/:codigo')
   @Roles('admin', 'bodeguero')
-  @ApiOperation({ summary: 'Obtener movimientos por código de producto' })
+  @ApiOperation({ summary: 'Obtener movimientos por cÃ³digo de producto' })
   @ApiParam({
     name: 'codigo',
-    description: 'Código del producto',
+    description: 'CÃ³digo del producto',
     example: 'PROD001',
   })
   @ApiResponse({
@@ -292,7 +292,7 @@ export class MovimientosController {
     @Query('soloStockBajo') soloStockBajo?: string,
     @Query('incluirCeros') incluirCeros?: string,
   ) {
-    // Convertir y validar parámetros
+    // Convertir y validar parÃ¡metros
     const filtros = {
       bodegaId: bodegaId ? parseInt(bodegaId) : undefined,
       productoId: productoId ? parseInt(productoId) : undefined,
@@ -343,7 +343,7 @@ export class MovimientosController {
   })
   @ApiResponse({
     status: 400,
-    description: 'Datos inválidos o stock insuficiente',
+    description: 'Datos invÃ¡lidos o stock insuficiente',
   })
   @ApiResponse({ status: 404, description: 'Movimiento no encontrado' })
   @ApiResponse({ status: 403, description: 'Sin permisos' })
@@ -374,14 +374,16 @@ export class MovimientosController {
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({
     summary: 'Descargar plantilla Excel para carga masiva de movimientos',
-    description: 'Descarga un archivo Excel con hojas de plantilla, productos, bodegas, clientes e instrucciones para la carga offline'
+    description:
+      'Descarga un archivo Excel con hojas de plantilla, productos, bodegas, clientes e instrucciones para la carga offline',
   })
   @ApiResponse({
     status: 200,
     description: 'Plantilla Excel generada exitosamente',
     headers: {
       'Content-Type': {
-        description: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        description:
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       },
       'Content-Disposition': {
         description: 'attachment; filename="plantilla_movimientos.xlsx"',
@@ -411,7 +413,8 @@ export class MovimientosController {
   @ApiConsumes('multipart/form-data')
   @ApiOperation({
     summary: 'Subir y procesar Excel con movimientos',
-    description: 'Procesa el archivo Excel con movimientos y retorna el resultado del procesamiento'
+    description:
+      'Procesa el archivo Excel con movimientos y retorna el resultado del procesamiento',
   })
   @ApiBody({
     description: 'Archivo Excel con movimientos',
@@ -435,17 +438,20 @@ export class MovimientosController {
         exitosos: {
           type: 'number',
           example: 45,
-          description: 'Número de movimientos creados exitosamente',
+          description: 'NÃºmero de movimientos creados exitosamente',
         },
         fallidos: {
           type: 'number',
           example: 2,
-          description: 'Número de movimientos que fallaron',
+          description: 'NÃºmero de movimientos que fallaron',
         },
         errores: {
           type: 'array',
           items: { type: 'string' },
-          example: ['Fila 3: Producto "PROD-999" no encontrado', 'Fila 5: Stock insuficiente'],
+          example: [
+            'Fila 3: Producto "PROD-999" no encontrado',
+            'Fila 5: Stock insuficiente',
+          ],
           description: 'Lista de errores encontrados',
         },
         movimientos: {
@@ -455,14 +461,14 @@ export class MovimientosController {
       },
     },
   })
-  @ApiResponse({ status: 400, description: 'Archivo inválido o formato incorrecto' })
+  @ApiResponse({
+    status: 400,
+    description: 'Archivo invÃ¡lido o formato incorrecto',
+  })
   @ApiResponse({ status: 403, description: 'Sin permisos' })
-  async subirPlantilla(
-    @UploadedFile() file: Express.Multer.File,
-    @Request() req,
-  ) {
+  async subirPlantilla(@UploadedFile() file: any, @Request() req) {
     if (!file) {
-      throw new Error('No se proporcionó ningún archivo');
+      throw new Error('No se proporcionÃ³ ningÃºn archivo');
     }
 
     if (!file.originalname.endsWith('.xlsx')) {

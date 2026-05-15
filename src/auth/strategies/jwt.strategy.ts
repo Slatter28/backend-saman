@@ -21,17 +21,17 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       ignoreExpiration: false,
       secretOrKey: configService.get<string>('JWT_SECRET') || 'your-secret-key',
     });
-    console.log('🔐 JwtStrategy configurado correctamente');
+    console.log('ðŸ” JwtStrategy configurado correctamente');
   }
 
   async validate(payload: JwtPayload) {
-    console.log('🔍 Validando payload JWT:', payload);
+    console.log('ðŸ” Validando payload JWT:', payload);
     
     const tenantId = payload.bodegaId || 'principal';
     const user = await this.authService.findById(payload.sub, tenantId);
     
     if (!user) {
-      throw new UnauthorizedException('Token inválido');
+      throw new UnauthorizedException('Token invÃ¡lido');
     }
     
     // Agregar bodegaId al usuario para el request

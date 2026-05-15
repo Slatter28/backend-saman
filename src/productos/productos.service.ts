@@ -9,7 +9,7 @@ import {
 import { REQUEST } from '@nestjs/core';
 import { Request } from 'express';
 import { InjectDataSource } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource } from 'typeorm';
 import { Producto } from '../entities/producto.entity';
 import { UnidadMedida } from '../entities/unidad-medida.entity';
 import { CreateProductoDto, UpdateProductoDto, QueryProductoDto } from './dto';
@@ -27,27 +27,33 @@ export class ProductosService {
     const middlewareTenant = request.tenantId;
 
     this.tenantId = userTenant || middlewareTenant || 'principal';
-    console.log(`🏢 ProductosService inicializado para tenant: ${this.tenantId}`);
+    console.log(
+      `ðŸ¢ ProductosService inicializado para tenant: ${this.tenantId}`,
+    );
 
     if ((request as any).user) {
-      console.log(`👤 Usuario autenticado detectado: ${(request as any).user.correo} - Tenant: ${this.tenantId}`);
+      console.log(
+        `ðŸ‘¤ Usuario autenticado detectado: ${(request as any).user.correo} - Tenant: ${this.tenantId}`,
+      );
     } else if (middlewareTenant) {
-      console.log(`🔧 Tenant desde middleware: ${this.tenantId}`);
+      console.log(`ðŸ”§ Tenant desde middleware: ${this.tenantId}`);
     } else {
-      console.log(`👤 Sin usuario autenticado, usando tenant por defecto: ${this.tenantId}`);
+      console.log(
+        `ðŸ‘¤ Sin usuario autenticado, usando tenant por defecto: ${this.tenantId}`,
+      );
     }
   }
 
   private getSchemaName(tenantId: string): string {
     const schemaMap: Record<string, string> = {
-      'principal': 'inventario_principal',
-      'sucursal': 'inventario_sucursal',
+      principal: 'inventario_principal',
+      sucursal: 'inventario_sucursal',
     };
     return schemaMap[tenantId] || 'inventario_principal';
   }
 
   private async executeWithTenant<T>(
-    operation: (manager: any) => Promise<T>
+    operation: (manager: any) => Promise<T>,
   ): Promise<T> {
     const schemaName = this.getSchemaName(this.tenantId);
     const queryRunner = this.dataSource.createQueryRunner();
@@ -55,15 +61,15 @@ export class ProductosService {
     try {
       await queryRunner.connect();
       await queryRunner.query(`SET search_path TO ${schemaName}, public`);
-      console.log(`🗄️ Ejecutando operación en esquema: ${schemaName}`);
+      console.log(`ðŸ—„ï¸ Ejecutando operaciÃ³n en esquema: ${schemaName}`);
 
       // Pasar el EntityManager al callback
       const result = await operation(queryRunner.manager);
       return result;
     } finally {
-      // 🔥 IMPORTANTE: Siempre liberar el QueryRunner
+      // ðŸ”¥ IMPORTANTE: Siempre liberar el QueryRunner
       await queryRunner.release();
-      console.log(`✅ QueryRunner liberado para esquema: ${schemaName}`);
+      console.log(`âœ… QueryRunner liberado para esquema: ${schemaName}`);
     }
   }
 
@@ -111,7 +117,9 @@ export class ProductosService {
 
       const [productos, total] = await queryBuilder.getManyAndCount();
 
-      console.log(`📦 Productos encontrados en ${this.getCurrentTenant()}: ${total}`);
+      console.log(
+        `ðŸ“¦ Productos encontrados en ${this.getCurrentTenant()}: ${total}`,
+      );
 
       return {
         data: productos,
@@ -135,10 +143,15 @@ export class ProductosService {
       });
 
       if (!producto) {
-        throw new NotFoundException(`Producto con ID ${id} no encontrado en ${this.getCurrentTenant()}`);
+        throw new NotFoundException(
+          `Producto con ID ${id} no encontrado en ${this.getCurrentTenant()}`,
+        );
       }
 
-      console.log(`📦 Producto encontrado en ${this.getCurrentTenant()}:`, producto.codigo);
+      console.log(
+        `ðŸ“¦ Producto encontrado en ${this.getCurrentTenant()}:`,
+        producto.codigo,
+      );
       return producto;
     });
   }
@@ -150,13 +163,15 @@ export class ProductosService {
       const productoRepository = manager.getRepository(Producto);
       const unidadMedidaRepository = manager.getRepository(UnidadMedida);
 
-      // Verificar si el código ya existe EN EL TENANT ACTUAL
+      // Verificar si el cÃ³digo ya existe EN EL TENANT ACTUAL
       const existingProduct = await productoRepository.findOne({
         where: { codigo },
       });
 
       if (existingProduct) {
-        throw new ConflictException(`Producto con código '${codigo}' ya existe en ${this.getCurrentTenant()}`);
+        throw new ConflictException(
+          `Producto con cÃ³digo '${codigo}' ya existe en ${this.getCurrentTenant()}`,
+        );
       }
 
       // Verificar que la unidad de medida existe EN EL TENANT ACTUAL
@@ -178,7 +193,10 @@ export class ProductosService {
 
       const savedProducto = await productoRepository.save(producto);
 
-      console.log(`✅ Producto creado en ${this.getCurrentTenant()}:`, savedProducto.codigo);
+      console.log(
+        `âœ… Producto creado en ${this.getCurrentTenant()}:`,
+        savedProducto.codigo,
+      );
 
       // Buscar y retornar el producto completo con relaciones
       return productoRepository.findOne({
@@ -203,12 +221,14 @@ export class ProductosService {
       });
 
       if (!producto) {
-        throw new NotFoundException(`Producto con ID ${id} no encontrado en ${this.getCurrentTenant()}`);
+        throw new NotFoundException(
+          `Producto con ID ${id} no encontrado en ${this.getCurrentTenant()}`,
+        );
       }
 
       const { codigo, descripcion, unidadMedidaId } = updateProductoDto;
 
-      // Verificar si el nuevo código ya existe EN EL TENANT ACTUAL (si se está cambiando)
+      // Verificar si el nuevo cÃ³digo ya existe EN EL TENANT ACTUAL (si se estÃ¡ cambiando)
       if (codigo && codigo !== producto.codigo) {
         const existingProduct = await productoRepository.findOne({
           where: { codigo },
@@ -216,12 +236,12 @@ export class ProductosService {
 
         if (existingProduct) {
           throw new ConflictException(
-            `Producto con código '${codigo}' ya existe en ${this.getCurrentTenant()}`,
+            `Producto con cÃ³digo '${codigo}' ya existe en ${this.getCurrentTenant()}`,
           );
         }
       }
 
-      // Verificar que la nueva unidad de medida existe EN EL TENANT ACTUAL (si se está cambiando)
+      // Verificar que la nueva unidad de medida existe EN EL TENANT ACTUAL (si se estÃ¡ cambiando)
       if (unidadMedidaId && unidadMedidaId !== producto.unidadMedida.id) {
         const unidadMedida = await unidadMedidaRepository.findOne({
           where: { id: unidadMedidaId },
@@ -241,7 +261,10 @@ export class ProductosService {
 
       await productoRepository.save(producto);
 
-      console.log(`✅ Producto actualizado en ${this.getCurrentTenant()}:`, producto.codigo);
+      console.log(
+        `âœ… Producto actualizado en ${this.getCurrentTenant()}:`,
+        producto.codigo,
+      );
 
       // Retornar el producto actualizado con relaciones
       return productoRepository.findOne({
@@ -261,12 +284,17 @@ export class ProductosService {
       });
 
       if (!producto) {
-        throw new NotFoundException(`Producto con ID ${id} no encontrado en ${this.getCurrentTenant()}`);
+        throw new NotFoundException(
+          `Producto con ID ${id} no encontrado en ${this.getCurrentTenant()}`,
+        );
       }
 
       await productoRepository.remove(producto);
 
-      console.log(`🗑️ Producto eliminado de ${this.getCurrentTenant()}:`, producto.codigo);
+      console.log(
+        `ðŸ—‘ï¸ Producto eliminado de ${this.getCurrentTenant()}:`,
+        producto.codigo,
+      );
     });
   }
 
@@ -274,7 +302,7 @@ export class ProductosService {
     return this.executeWithTenant(async (manager) => {
       const productoRepository = manager.getRepository(Producto);
 
-      // Obtener el último producto ordenado por código descendente
+      // Obtener el Ãºltimo producto ordenado por cÃ³digo descendente
       const lastProducto = await productoRepository
         .createQueryBuilder('producto')
         .where('producto.codigo LIKE :pattern', { pattern: 'PROD-%' })
@@ -284,17 +312,19 @@ export class ProductosService {
       let nextNumber = 1;
 
       if (lastProducto) {
-        // Extraer el número del código (ej: "PROD-005" -> "005")
+        // Extraer el nÃºmero del cÃ³digo (ej: "PROD-005" -> "005")
         const match = lastProducto.codigo.match(/PROD-(\d+)/);
         if (match) {
           nextNumber = parseInt(match[1], 10) + 1;
         }
       }
 
-      // Formatear el número con ceros a la izquierda (3 dígitos)
+      // Formatear el nÃºmero con ceros a la izquierda (3 dÃ­gitos)
       const nextCodigo = `PROD-${nextNumber.toString().padStart(3, '0')}`;
 
-      console.log(`📋 Siguiente código disponible en ${this.getCurrentTenant()}: ${nextCodigo}`);
+      console.log(
+        `ðŸ“‹ Siguiente cÃ³digo disponible en ${this.getCurrentTenant()}: ${nextCodigo}`,
+      );
 
       return { nextCodigo };
     });

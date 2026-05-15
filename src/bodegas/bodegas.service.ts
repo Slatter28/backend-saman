@@ -27,14 +27,14 @@ export class BodegasService {
     const middlewareTenant = request.tenantId;
 
     this.tenantId = userTenant || middlewareTenant || 'principal';
-    console.log(`🏢 BodegasService inicializado para tenant: ${this.tenantId}`);
+    console.log(`ðŸ¢ BodegasService inicializado para tenant: ${this.tenantId}`);
 
     if ((request as any).user) {
-      console.log(`👤 Usuario autenticado detectado: ${(request as any).user.correo} - Tenant: ${this.tenantId}`);
+      console.log(`ðŸ‘¤ Usuario autenticado detectado: ${(request as any).user.correo} - Tenant: ${this.tenantId}`);
     } else if (middlewareTenant) {
-      console.log(`🔧 Tenant desde middleware: ${this.tenantId}`);
+      console.log(`ðŸ”§ Tenant desde middleware: ${this.tenantId}`);
     } else {
-      console.log(`👤 Sin usuario autenticado, usando tenant por defecto: ${this.tenantId}`);
+      console.log(`ðŸ‘¤ Sin usuario autenticado, usando tenant por defecto: ${this.tenantId}`);
     }
   }
 
@@ -55,15 +55,15 @@ export class BodegasService {
     try {
       await queryRunner.connect();
       await queryRunner.query(`SET search_path TO ${schemaName}, public`);
-      console.log(`🗄️ Ejecutando operación en esquema: ${schemaName}`);
+      console.log(`ðŸ—„ï¸ Ejecutando operaciÃ³n en esquema: ${schemaName}`);
 
       // Pasar el EntityManager al callback
       const result = await operation(queryRunner.manager);
       return result;
     } finally {
-      // 🔥 IMPORTANTE: Siempre liberar el QueryRunner
+      // ðŸ”¥ IMPORTANTE: Siempre liberar el QueryRunner
       await queryRunner.release();
-      console.log(`✅ QueryRunner liberado para esquema: ${schemaName}`);
+      console.log(`âœ… QueryRunner liberado para esquema: ${schemaName}`);
     }
   }
 
@@ -98,7 +98,7 @@ export class BodegasService {
 
       const [bodegas, total] = await queryBuilder.getManyAndCount();
 
-      console.log(`🏪 Bodegas encontradas en ${this.getCurrentTenant()}: ${total}`);
+      console.log(`ðŸª Bodegas encontradas en ${this.getCurrentTenant()}: ${total}`);
 
       return {
         data: bodegas,
@@ -125,7 +125,7 @@ export class BodegasService {
         throw new NotFoundException(`Bodega con ID ${id} no encontrada en ${this.getCurrentTenant()}`);
       }
 
-      console.log(`🏪 Bodega encontrada en ${this.getCurrentTenant()}:`, bodega.nombre);
+      console.log(`ðŸª Bodega encontrada en ${this.getCurrentTenant()}:`, bodega.nombre);
       return bodega;
     });
   }
@@ -152,7 +152,7 @@ export class BodegasService {
 
       const savedBodega = await bodegaRepository.save(bodega);
 
-      console.log(`✅ Bodega creada en ${this.getCurrentTenant()}:`, savedBodega.nombre);
+      console.log(`âœ… Bodega creada en ${this.getCurrentTenant()}:`, savedBodega.nombre);
       return savedBodega;
     });
   }
@@ -173,7 +173,7 @@ export class BodegasService {
 
       const { nombre, ubicacion } = updateBodegaDto;
 
-      // Verificar si el nuevo nombre ya existe EN EL TENANT ACTUAL (si se está cambiando)
+      // Verificar si el nuevo nombre ya existe EN EL TENANT ACTUAL (si se estÃ¡ cambiando)
       if (nombre && nombre !== bodega.nombre) {
         const existingBodega = await bodegaRepository.findOne({
           where: { nombre },
@@ -189,7 +189,7 @@ export class BodegasService {
 
       const savedBodega = await bodegaRepository.save(bodega);
 
-      console.log(`✅ Bodega actualizada en ${this.getCurrentTenant()}:`, savedBodega.nombre);
+      console.log(`âœ… Bodega actualizada en ${this.getCurrentTenant()}:`, savedBodega.nombre);
       return savedBodega;
     });
   }
@@ -221,7 +221,7 @@ export class BodegasService {
 
       await bodegaRepository.remove(bodega);
 
-      console.log(`🗑️ Bodega eliminada de ${this.getCurrentTenant()}:`, bodega.nombre);
+      console.log(`ðŸ—‘ï¸ Bodega eliminada de ${this.getCurrentTenant()}:`, bodega.nombre);
     });
   }
 
@@ -260,7 +260,7 @@ export class BodegasService {
         .orderBy('producto.codigo', 'ASC')
         .getRawMany();
 
-      console.log(`📊 Inventario calculado para bodega ${bodega.nombre} en ${this.getCurrentTenant()}: ${inventario.length} productos`);
+      console.log(`ðŸ“Š Inventario calculado para bodega ${bodega.nombre} en ${this.getCurrentTenant()}: ${inventario.length} productos`);
 
       return {
         bodega: {

@@ -27,13 +27,13 @@ export class DashboardController {
   @Get('estadisticas')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Obtener estadísticas generales del sistema',
+    summary: 'Obtener estadÃ­sticas generales del sistema',
     description:
-      'Retorna el total de productos, clientes, bodegas y movimientos del día y mes actual',
+      'Retorna el total de productos, clientes, bodegas y movimientos del dÃ­a y mes actual',
   })
   @ApiResponse({
     status: 200,
-    description: 'Estadísticas obtenidas exitosamente',
+    description: 'EstadÃ­sticas obtenidas exitosamente',
     schema: {
       example: {
         totalProductos: 150,
@@ -54,12 +54,12 @@ export class DashboardController {
   @ApiOperation({
     summary: 'Obtener movimientos recientes',
     description:
-      'Retorna los últimos movimientos con información de producto, bodega, cliente y usuario',
+      'Retorna los Ãºltimos movimientos con informaciÃ³n de producto, bodega, cliente y usuario',
   })
   @ApiQuery({
     name: 'limit',
     required: false,
-    description: 'Número de movimientos a retornar (máximo 50)',
+    description: 'NÃºmero de movimientos a retornar (mÃ¡ximo 50)',
     example: 10,
   })
   @ApiResponse({
@@ -86,7 +86,7 @@ export class DashboardController {
           },
           usuario: {
             id: 1,
-            nombre: 'Juan Pérez',
+            nombre: 'Juan PÃ©rez',
           },
         },
       ],
@@ -103,12 +103,12 @@ export class DashboardController {
   @ApiOperation({
     summary: 'Obtener productos con stock bajo',
     description:
-      'Retorna productos cuyo stock actual está por debajo del límite especificado',
+      'Retorna productos cuyo stock actual estÃ¡ por debajo del lÃ­mite especificado',
   })
   @ApiQuery({
     name: 'limite',
     required: false,
-    description: 'Límite de stock para considerar bajo',
+    description: 'LÃ­mite de stock para considerar bajo',
     example: 5,
   })
   @ApiResponse({
@@ -142,13 +142,13 @@ export class DashboardController {
   @Get('graficos')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Obtener datos para gráficos del dashboard',
+    summary: 'Obtener datos para grÃ¡ficos del dashboard',
     description:
-      'Retorna datos agregados para generar gráficos: movimientos por día, entradas vs salidas, top productos y movimientos por bodega',
+      'Retorna datos agregados para generar grÃ¡ficos: movimientos por dÃ­a, entradas vs salidas, top productos y movimientos por bodega',
   })
   @ApiResponse({
     status: 200,
-    description: 'Datos para gráficos obtenidos exitosamente',
+    description: 'Datos para grÃ¡ficos obtenidos exitosamente',
     schema: {
       example: {
         movimientosPorDia: [

@@ -3,21 +3,21 @@ import { ApiProperty } from '@nestjs/swagger';
 
 export class LoginDto {
   @ApiProperty({
-    description: 'Correo electrónico del usuario',
+    description: 'Correo electrÃ³nico del usuario',
     example: '',
   })
   @IsEmail()
   correo: string;
 
   @ApiProperty({
-    description: 'Contraseña del usuario',
+    description: 'ContraseÃ±a del usuario',
     example: '',
   })
   @IsNotEmpty()
   @IsString()
   contrasena: string;
 
-  // 🆕 NUEVO CAMPO
+  // ðŸ†• NUEVO CAMPO
   @ApiProperty({
     description: 'ID de la bodega a la que desea acceder',
     // enum: ['principal', 'sucursal'],

@@ -12,7 +12,7 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class QueryMovimientoDto {
   @ApiPropertyOptional({
-    description: 'Número de página',
+    description: 'NÃºmero de pÃ¡gina',
     example: 1,
     minimum: 1,
   })
@@ -23,7 +23,7 @@ export class QueryMovimientoDto {
   page?: number = 1;
 
   @ApiPropertyOptional({
-    description: 'Elementos por página',
+    description: 'Elementos por pÃ¡gina',
     example: 10,
     minimum: 1,
   })
@@ -53,7 +53,7 @@ export class QueryMovimientoDto {
   productoId?: number;
 
   @ApiPropertyOptional({
-    description: 'Filtrar por código de producto',
+    description: 'Filtrar por cÃ³digo de producto',
     example: 'PROD001',
   })
   @IsOptional()

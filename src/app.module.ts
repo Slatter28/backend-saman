@@ -3,7 +3,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { DataSource } from 'typeorm'; // 🆕 Importar DataSource
+import { DataSource } from 'typeorm'; // ðŸ†• Importar DataSource
 import { Usuario } from './entities/usuario.entity';
 import { Producto } from './entities/producto.entity';
 import { Bodega } from './entities/bodega.entity';
@@ -59,7 +59,7 @@ import { TenantModule, TenantMiddleware } from './common/tenant';
   controllers: [AppController],
   providers: [
     AppService,
-    // 🆕 Agregar proveedor DATA_SOURCE
+    // ðŸ†• Agregar proveedor DATA_SOURCE
     {
       provide: 'DATA_SOURCE',
       useFactory: (dataSource: DataSource) => dataSource,

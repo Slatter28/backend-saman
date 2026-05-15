@@ -21,14 +21,14 @@ export class DashboardService {
     const middlewareTenant = request.tenantId;
 
     this.tenantId = userTenant || middlewareTenant || 'principal';
-    console.log(`📊 DashboardService inicializado para tenant: ${this.tenantId}`);
+    console.log(`ðŸ“Š DashboardService inicializado para tenant: ${this.tenantId}`);
 
     if ((request as any).user) {
-      console.log(`👤 Usuario autenticado detectado: ${(request as any).user.correo} - Tenant: ${this.tenantId}`);
+      console.log(`ðŸ‘¤ Usuario autenticado detectado: ${(request as any).user.correo} - Tenant: ${this.tenantId}`);
     } else if (middlewareTenant) {
-      console.log(`🔧 Tenant desde middleware: ${this.tenantId}`);
+      console.log(`ðŸ”§ Tenant desde middleware: ${this.tenantId}`);
     } else {
-      console.log(`👤 Sin usuario autenticado, usando tenant por defecto: ${this.tenantId}`);
+      console.log(`ðŸ‘¤ Sin usuario autenticado, usando tenant por defecto: ${this.tenantId}`);
     }
   }
 
@@ -49,15 +49,15 @@ export class DashboardService {
     try {
       await queryRunner.connect();
       await queryRunner.query(`SET search_path TO ${schemaName}, public`);
-      console.log(`🗄️ Ejecutando operación en esquema: ${schemaName}`);
+      console.log(`ðŸ—„ï¸ Ejecutando operaciÃ³n en esquema: ${schemaName}`);
 
       // Pasar el EntityManager al callback
       const result = await operation(queryRunner.manager);
       return result;
     } finally {
-      // 🔥 IMPORTANTE: Siempre liberar el QueryRunner
+      // ðŸ”¥ IMPORTANTE: Siempre liberar el QueryRunner
       await queryRunner.release();
-      console.log(`✅ QueryRunner liberado para esquema: ${schemaName}`);
+      console.log(`âœ… QueryRunner liberado para esquema: ${schemaName}`);
     }
   }
 
@@ -102,7 +102,7 @@ export class DashboardService {
           .getCount(),
       ]);
 
-      console.log(`📊 Estadísticas calculadas para ${this.getCurrentTenant()}: ${totalProductos} productos, ${totalBodegas} bodegas`);
+      console.log(`ðŸ“Š EstadÃ­sticas calculadas para ${this.getCurrentTenant()}: ${totalProductos} productos, ${totalBodegas} bodegas`);
 
       return {
         totalProductos,
@@ -146,7 +146,7 @@ export class DashboardService {
         },
       });
 
-      console.log(`📊 Movimientos recientes obtenidos para ${this.getCurrentTenant()}: ${movimientos.length} registros`);
+      console.log(`ðŸ“Š Movimientos recientes obtenidos para ${this.getCurrentTenant()}: ${movimientos.length} registros`);
       return movimientos;
     });
   }
@@ -156,7 +156,7 @@ export class DashboardService {
       try {
         const schemaName = this.getSchemaName(this.tenantId);
 
-        // Query que calcula stock actual sin incluir precio del producto - usando esquema específico
+        // Query que calcula stock actual sin incluir precio del producto - usando esquema especÃ­fico
         const stockQuery = `
           SELECT
             p.id,
@@ -174,7 +174,7 @@ export class DashboardService {
 
         const result = await manager.query(stockQuery, [limite]);
 
-        console.log(`📊 Productos con stock bajo calculados para ${this.getCurrentTenant()}: ${result.length} productos`);
+        console.log(`ðŸ“Š Productos con stock bajo calculados para ${this.getCurrentTenant()}: ${result.length} productos`);
 
         return result.map((item: any) => ({
           id: parseInt(item.id),
@@ -189,7 +189,7 @@ export class DashboardService {
         const productoRepository = manager.getRepository(Producto);
         const productos = await productoRepository.find({ take: 5 });
 
-        console.log(`📊 Fallback: productos simulados para ${this.getCurrentTenant()}: ${productos.length} productos`);
+        console.log(`ðŸ“Š Fallback: productos simulados para ${this.getCurrentTenant()}: ${productos.length} productos`);
 
         return productos.map((producto) => ({
           id: producto.id,
@@ -207,11 +207,11 @@ export class DashboardService {
       const productoRepository = manager.getRepository(Producto);
       const bodegaRepository = manager.getRepository(Bodega);
 
-      // Versión simplificada con datos mock para demostración
+      // VersiÃ³n simplificada con datos mock para demostraciÃ³n
       const movimientosPorDia = [];
       const entradasVsSalidas = [];
 
-      // Generar datos mock para los últimos 7 días
+      // Generar datos mock para los Ãºltimos 7 dÃ­as
       for (let i = 6; i >= 0; i--) {
         const fecha = new Date();
         fecha.setDate(fecha.getDate() - i);
@@ -253,7 +253,7 @@ export class DashboardService {
         salidas: Math.floor(Math.random() * 40) + 5,
       }));
 
-      console.log(`📊 Datos gráficos generados para ${this.getCurrentTenant()}: ${productos.length} productos, ${bodegas.length} bodegas`);
+      console.log(`ðŸ“Š Datos grÃ¡ficos generados para ${this.getCurrentTenant()}: ${productos.length} productos, ${bodegas.length} bodegas`);
 
       return {
         movimientosPorDia,
@@ -269,11 +269,11 @@ export class DashboardService {
       const bodegaRepository = manager.getRepository(Bodega);
       const productoRepository = manager.getRepository(Producto);
 
-      // Versión simplificada que funciona con cualquier estado de la BD EN EL TENANT ACTUAL
+      // VersiÃ³n simplificada que funciona con cualquier estado de la BD EN EL TENANT ACTUAL
       const bodegas = await bodegaRepository.find({ take: 5 });
       const productos = await productoRepository.find({ take: 3 });
 
-      console.log(`📊 Inventario resumen generado para ${this.getCurrentTenant()}: ${bodegas.length} bodegas, ${productos.length} productos`);
+      console.log(`ðŸ“Š Inventario resumen generado para ${this.getCurrentTenant()}: ${bodegas.length} bodegas, ${productos.length} productos`);
 
       return bodegas.map((bodega) => ({
         bodega_id: bodega.id,

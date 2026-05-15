@@ -11,27 +11,27 @@ import { ApiProperty } from '@nestjs/swagger';
 export class RegisterDto {
   @ApiProperty({
     description: 'Nombre completo del usuario',
-    example: 'Juan Pérez',
+    example: 'Juan PÃ©rez',
   })
   @IsNotEmpty()
   @IsString()
   nombre: string;
 
   @ApiProperty({
-    description: 'Correo electrónico del usuario',
+    description: 'Correo electrÃ³nico del usuario',
     example: 'juan.perez@email.com',
   })
   @IsEmail()
   correo: string;
 
   @ApiProperty({
-    description: 'Contraseña del usuario (mínimo 6 caracteres)',
+    description: 'ContraseÃ±a del usuario (mÃ­nimo 6 caracteres)',
     example: 'password123',
     minLength: 6,
   })
   @IsNotEmpty()
   @IsString()
-  @MinLength(6, { message: 'La contraseña debe tener al menos 6 caracteres' })
+  @MinLength(6, { message: 'La contraseÃ±a debe tener al menos 6 caracteres' })
   contrasena: string;
 
   @ApiProperty({
@@ -44,7 +44,7 @@ export class RegisterDto {
   })
   rol: 'admin' | 'bodeguero';
 
-  // 🆕 NUEVO CAMPO
+  // ðŸ†• NUEVO CAMPO
   @ApiProperty({
     description: 'ID de la bodega a la que pertenece el usuario',
     enum: ['principal', 'sucursal'],

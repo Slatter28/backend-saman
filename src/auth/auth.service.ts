@@ -27,20 +27,20 @@ export class AuthService {
     // Para auth, siempre empezamos con 'principal' por defecto
     // El tenant real se determina en el login
     this.tenantId = 'principal';
-    console.log(`🔐 AuthService inicializado`);
+    console.log(`ðŸ” AuthService inicializado`);
   }
 
   private getSchemaName(tenantId: string): string {
     const schemaMap: Record<string, string> = {
-      'principal': 'inventario_principal',
-      'sucursal': 'inventario_sucursal',
+      principal: 'inventario_principal',
+      sucursal: 'inventario_sucursal',
     };
     return schemaMap[tenantId] || 'inventario_principal';
   }
 
   private async executeWithTenant<T>(
     operation: (usuarioRepository: Repository<Usuario>) => Promise<T>,
-    tenantId: string = this.tenantId
+    tenantId: string = this.tenantId,
   ): Promise<T> {
     const schemaName = this.getSchemaName(tenantId);
     const queryRunner = this.dataSource.createQueryRunner();
@@ -48,20 +48,25 @@ export class AuthService {
     try {
       await queryRunner.connect();
       await queryRunner.query(`SET search_path TO ${schemaName}, public`);
-      console.log(`🔧 Ejecutando operación en esquema: ${schemaName}`);
+      console.log(`ðŸ”§ Ejecutando operaciÃ³n en esquema: ${schemaName}`);
 
       const usuarioRepository = queryRunner.manager.getRepository(Usuario);
       const result = await operation(usuarioRepository);
       return result;
     } finally {
-      // 🔥 IMPORTANTE: Siempre liberar el QueryRunner
+      // ðŸ”¥ IMPORTANTE: Siempre liberar el QueryRunner
       await queryRunner.release();
-      console.log(`✅ QueryRunner liberado para esquema: ${schemaName}`);
+      console.log(`âœ… QueryRunner liberado para esquema: ${schemaName}`);
     }
   }
 
   async register(registerDto: RegisterDto) {
-    const { correo, contrasena, bodegaId = 'principal', ...userData } = registerDto;
+    const {
+      correo,
+      contrasena,
+      bodegaId = 'principal',
+      ...userData
+    } = registerDto;
 
     console.log('=== REGISTER DEBUG ===');
     console.log('Registrando usuario:', correo);
@@ -87,9 +92,11 @@ export class AuthService {
 
       const savedUser = await usuarioRepository.save(usuario);
 
-      console.log(`✅ Usuario registrado en esquema: ${this.getSchemaName(bodegaId)}`);
+      console.log(
+        `âœ… Usuario registrado en esquema: ${this.getSchemaName(bodegaId)}`,
+      );
 
-      // Remover la contraseña del resultado
+      // Remover la contraseÃ±a del resultado
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { contrasena: _, ...result } = savedUser;
       return {
@@ -97,7 +104,7 @@ export class AuthService {
         access_token: this.generateJwtToken({
           id: savedUser.id,
           correo: savedUser.correo,
-          bodegaId
+          bodegaId,
         }),
       };
     }, bodegaId);
@@ -107,7 +114,7 @@ export class AuthService {
     const { correo, contrasena, bodegaId } = loginDto;
 
     console.log('=== LOGIN DEBUG ===');
-    console.log('Intentando iniciar sesión con:', correo);
+    console.log('Intentando iniciar sesiÃ³n con:', correo);
     console.log('BodegaId solicitada:', bodegaId);
 
     // Si no se especifica bodegaId, buscar en ambos esquemas
@@ -115,7 +122,7 @@ export class AuthService {
     let finalBodegaId = bodegaId;
 
     if (bodegaId) {
-      // Buscar en el esquema específico
+      // Buscar en el esquema especÃ­fico
       usuario = await this.executeWithTenant(async (usuarioRepository) => {
         return usuarioRepository.findOne({ where: { correo } });
       }, bodegaId);
@@ -125,9 +132,12 @@ export class AuthService {
       const tenants = ['principal', 'sucursal'];
 
       for (const tenant of tenants) {
-        const foundUser = await this.executeWithTenant(async (usuarioRepository) => {
-          return usuarioRepository.findOne({ where: { correo } });
-        }, tenant);
+        const foundUser = await this.executeWithTenant(
+          async (usuarioRepository) => {
+            return usuarioRepository.findOne({ where: { correo } });
+          },
+          tenant,
+        );
 
         if (foundUser) {
           usuario = foundUser;
@@ -138,19 +148,24 @@ export class AuthService {
     }
 
     if (!usuario) {
-      throw new UnauthorizedException('Credenciales inválidas');
+      throw new UnauthorizedException('Credenciales invÃ¡lidas');
     }
 
-    // Validar que el usuario esté activo
+    // Validar que el usuario estÃ© activo
     if (!usuario.estado) {
-      throw new UnauthorizedException('Usuario inactivo. Contacte al administrador');
+      throw new UnauthorizedException(
+        'Usuario inactivo. Contacte al administrador',
+      );
     }
 
-    // Validar la contraseña
-    const isPasswordValid = await bcryptjs.compare(contrasena, usuario.contrasena);
+    // Validar la contraseÃ±a
+    const isPasswordValid = await bcryptjs.compare(
+      contrasena,
+      usuario.contrasena,
+    );
 
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Credenciales inválidas');
+      throw new UnauthorizedException('Credenciales invÃ¡lidas');
     }
 
     // Validar acceso a la bodega (los admin pueden acceder a cualquier bodega)
@@ -158,9 +173,9 @@ export class AuthService {
       throw new UnauthorizedException('No tienes acceso a esta bodega');
     }
 
-    console.log(`✅ Login exitoso para bodega: ${finalBodegaId}`);
+    console.log(`âœ… Login exitoso para bodega: ${finalBodegaId}`);
 
-    // Remover la contraseña del resultado
+    // Remover la contraseÃ±a del resultado
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { contrasena: _, ...result } = usuario;
 
@@ -169,19 +184,22 @@ export class AuthService {
       access_token: this.generateJwtToken({
         id: usuario.id,
         correo: usuario.correo,
-        bodegaId: finalBodegaId
+        bodegaId: finalBodegaId,
       }),
     };
   }
 
   async validateUser(correo: string, contrasena: string): Promise<any> {
-    // Buscar en todos los esquemas para validación
+    // Buscar en todos los esquemas para validaciÃ³n
     const tenants = ['principal', 'sucursal'];
 
     for (const tenant of tenants) {
-      const usuario = await this.executeWithTenant(async (usuarioRepository) => {
-        return usuarioRepository.findOne({ where: { correo } });
-      }, tenant);
+      const usuario = await this.executeWithTenant(
+        async (usuarioRepository) => {
+          return usuarioRepository.findOne({ where: { correo } });
+        },
+        tenant,
+      );
 
       if (usuario && (await bcryptjs.compare(contrasena, usuario.contrasena))) {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -227,7 +245,7 @@ export class AuthService {
       const usuario = usuarioRepository.create(testUser);
       await usuarioRepository.save(usuario);
 
-      console.log('✅ Usuario de prueba creado en inventario_principal');
+      console.log('âœ… Usuario de prueba creado en inventario_principal');
 
       return {
         message: 'Usuario de prueba creado exitosamente',
@@ -239,7 +257,11 @@ export class AuthService {
     }, 'principal');
   }
 
-  async findAll(page: number = 1, limit: number = 10, tenantId: string = 'principal') {
+  async findAll(
+    page: number = 1,
+    limit: number = 10,
+    tenantId: string = 'principal',
+  ) {
     return this.executeWithTenant(async (usuarioRepository) => {
       const skip = (page - 1) * limit;
 
@@ -251,8 +273,8 @@ export class AuthService {
         },
       });
 
-      // Remover contraseñas del resultado
-      const usuariosSinContrasena = usuarios.map(usuario => {
+      // Remover contraseÃ±as del resultado
+      const usuariosSinContrasena = usuarios.map((usuario) => {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { contrasena, ...result } = usuario;
         return result;
@@ -270,7 +292,11 @@ export class AuthService {
     }, tenantId);
   }
 
-  async update(id: number, updateData: Partial<Usuario>, tenantId: string = 'principal') {
+  async update(
+    id: number,
+    updateData: Partial<Usuario>,
+    tenantId: string = 'principal',
+  ) {
     return this.executeWithTenant(async (usuarioRepository) => {
       const usuario = await usuarioRepository.findOne({ where: { id } });
 
@@ -278,20 +304,24 @@ export class AuthService {
         throw new UnauthorizedException('Usuario no encontrado');
       }
 
-      // Si se actualiza la contraseña, TypeORM se encargará del hash automáticamente
+      // Si se actualiza la contraseÃ±a, TypeORM se encargarÃ¡ del hash automÃ¡ticamente
       // gracias a @BeforeUpdate en la entidad Usuario
       Object.assign(usuario, updateData);
 
       const updatedUser = await usuarioRepository.save(usuario);
 
-      // Remover la contraseña del resultado
+      // Remover la contraseÃ±a del resultado
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { contrasena, ...result } = updatedUser;
       return result;
     }, tenantId);
   }
 
-  async toggleEstado(id: number, estado: boolean, tenantId: string = 'principal') {
+  async toggleEstado(
+    id: number,
+    estado: boolean,
+    tenantId: string = 'principal',
+  ) {
     return this.executeWithTenant(async (usuarioRepository) => {
       const usuario = await usuarioRepository.findOne({ where: { id } });
 
@@ -302,14 +332,18 @@ export class AuthService {
       usuario.estado = estado;
       const updatedUser = await usuarioRepository.save(usuario);
 
-      // Remover la contraseña del resultado
+      // Remover la contraseÃ±a del resultado
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { contrasena, ...result } = updatedUser;
       return result;
     }, tenantId);
   }
 
-  async cambiarContrasena(id: number, nuevaContrasena: string, tenantId: string = 'principal') {
+  async cambiarContrasena(
+    id: number,
+    nuevaContrasena: string,
+    tenantId: string = 'principal',
+  ) {
     return this.executeWithTenant(async (usuarioRepository) => {
       const usuario = await usuarioRepository.findOne({ where: { id } });
 
@@ -320,7 +354,7 @@ export class AuthService {
       usuario.contrasena = nuevaContrasena;
       const updatedUser = await usuarioRepository.save(usuario);
 
-      // Remover la contraseña del resultado
+      // Remover la contraseÃ±a del resultado
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { contrasena, ...result } = updatedUser;
       return result;
@@ -344,14 +378,18 @@ export class AuthService {
     }, tenantId);
   }
 
-  private generateJwtToken(usuario: { id: number; correo: string; bodegaId?: string }): string {
+  private generateJwtToken(usuario: {
+    id: number;
+    correo: string;
+    bodegaId?: string;
+  }): string {
     const payload = {
       sub: usuario.id,
       correo: usuario.correo,
-      bodegaId: usuario.bodegaId || 'principal'
+      bodegaId: usuario.bodegaId || 'principal',
     };
 
-    console.log('🔑 Generando JWT con payload:', payload);
+    console.log('ðŸ”‘ Generando JWT con payload:', payload);
     return this.jwtService.sign(payload);
   }
 }

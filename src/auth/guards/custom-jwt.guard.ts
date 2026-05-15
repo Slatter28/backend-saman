@@ -36,10 +36,10 @@ export class CustomJwtGuard implements CanActivate {
         bodegaId: tenantId
       };
 
-      console.log(`🔐 Custom JWT Guard: Usuario autenticado: ${user.correo} - Tenant: ${tenantId}`);
+      console.log(`ðŸ” Custom JWT Guard: Usuario autenticado: ${user.correo} - Tenant: ${tenantId}`);
       return true;
     } catch (error) {
-      console.error('🔐 Custom JWT Guard: Error validating token:', error.message);
+      console.error('ðŸ” Custom JWT Guard: Error validating token:', error.message);
       throw new UnauthorizedException('Invalid token');
     }
   }

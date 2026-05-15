@@ -31,27 +31,33 @@ export class UnidadesMedidaService {
     const middlewareTenant = request.tenantId;
 
     this.tenantId = userTenant || middlewareTenant || 'principal';
-    console.log(`📏 UnidadesMedidaService inicializado para tenant: ${this.tenantId}`);
+    console.log(
+      `ðŸ“ UnidadesMedidaService inicializado para tenant: ${this.tenantId}`,
+    );
 
     if ((request as any).user) {
-      console.log(`👤 Usuario autenticado detectado: ${(request as any).user.correo} - Tenant: ${this.tenantId}`);
+      console.log(
+        `ðŸ‘¤ Usuario autenticado detectado: ${(request as any).user.correo} - Tenant: ${this.tenantId}`,
+      );
     } else if (middlewareTenant) {
-      console.log(`🔧 Tenant desde middleware: ${this.tenantId}`);
+      console.log(`ðŸ”§ Tenant desde middleware: ${this.tenantId}`);
     } else {
-      console.log(`👤 Sin usuario autenticado, usando tenant por defecto: ${this.tenantId}`);
+      console.log(
+        `ðŸ‘¤ Sin usuario autenticado, usando tenant por defecto: ${this.tenantId}`,
+      );
     }
   }
 
   private getSchemaName(tenantId: string): string {
     const schemaMap: Record<string, string> = {
-      'principal': 'inventario_principal',
-      'sucursal': 'inventario_sucursal',
+      principal: 'inventario_principal',
+      sucursal: 'inventario_sucursal',
     };
     return schemaMap[tenantId] || 'inventario_principal';
   }
 
   private async executeWithTenant<T>(
-    operation: (manager: any) => Promise<T>
+    operation: (manager: any) => Promise<T>,
   ): Promise<T> {
     const schemaName = this.getSchemaName(this.tenantId);
     const queryRunner = this.dataSource.createQueryRunner();
@@ -59,15 +65,15 @@ export class UnidadesMedidaService {
     try {
       await queryRunner.connect();
       await queryRunner.query(`SET search_path TO ${schemaName}, public`);
-      console.log(`🗄️ Ejecutando operación en esquema: ${schemaName}`);
+      console.log(`ðŸ—„ï¸ Ejecutando operaciÃ³n en esquema: ${schemaName}`);
 
       // Pasar el EntityManager al callback
       const result = await operation(queryRunner.manager);
       return result;
     } finally {
-      // 🔥 IMPORTANTE: Siempre liberar el QueryRunner
+      // ðŸ”¥ IMPORTANTE: Siempre liberar el QueryRunner
       await queryRunner.release();
-      console.log(`✅ QueryRunner liberado para esquema: ${schemaName}`);
+      console.log(`âœ… QueryRunner liberado para esquema: ${schemaName}`);
     }
   }
 
@@ -96,7 +102,9 @@ export class UnidadesMedidaService {
 
       const [unidadesMedida, total] = await queryBuilder.getManyAndCount();
 
-      console.log(`📏 Unidades de medida encontradas en ${this.getCurrentTenant()}: ${total}`);
+      console.log(
+        `ðŸ“ Unidades de medida encontradas en ${this.getCurrentTenant()}: ${total}`,
+      );
 
       return {
         data: unidadesMedida,
@@ -125,7 +133,10 @@ export class UnidadesMedidaService {
         );
       }
 
-      console.log(`📏 Unidad de medida encontrada en ${this.getCurrentTenant()}:`, unidadMedida.nombre);
+      console.log(
+        `ðŸ“ Unidad de medida encontrada en ${this.getCurrentTenant()}:`,
+        unidadMedida.nombre,
+      );
       return unidadMedida;
     });
   }
@@ -156,7 +167,10 @@ export class UnidadesMedidaService {
 
       const savedUnidadMedida = await unidadMedidaRepository.save(unidadMedida);
 
-      console.log(`✅ Unidad de medida creada en ${this.getCurrentTenant()}:`, savedUnidadMedida.nombre);
+      console.log(
+        `âœ… Unidad de medida creada en ${this.getCurrentTenant()}:`,
+        savedUnidadMedida.nombre,
+      );
       return savedUnidadMedida;
     });
   }
@@ -182,7 +196,7 @@ export class UnidadesMedidaService {
 
       const { nombre, descripcion } = updateUnidadMedidaDto;
 
-      // Verificar si el nuevo nombre ya existe EN EL TENANT ACTUAL (si se está cambiando)
+      // Verificar si el nuevo nombre ya existe EN EL TENANT ACTUAL (si se estÃ¡ cambiando)
       if (nombre && nombre !== unidadMedida.nombre) {
         const existingUnidadMedida = await unidadMedidaRepository.findOne({
           where: { nombre },
@@ -200,7 +214,10 @@ export class UnidadesMedidaService {
 
       const savedUnidadMedida = await unidadMedidaRepository.save(unidadMedida);
 
-      console.log(`✅ Unidad de medida actualizada en ${this.getCurrentTenant()}:`, savedUnidadMedida.nombre);
+      console.log(
+        `âœ… Unidad de medida actualizada en ${this.getCurrentTenant()}:`,
+        savedUnidadMedida.nombre,
+      );
       return savedUnidadMedida;
     });
   }
@@ -234,7 +251,10 @@ export class UnidadesMedidaService {
 
       await unidadMedidaRepository.remove(unidadMedida);
 
-      console.log(`🗑️ Unidad de medida eliminada de ${this.getCurrentTenant()}:`, unidadMedida.nombre);
+      console.log(
+        `ðŸ—‘ï¸ Unidad de medida eliminada de ${this.getCurrentTenant()}:`,
+        unidadMedida.nombre,
+      );
     });
   }
 }

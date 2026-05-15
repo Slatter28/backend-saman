@@ -35,7 +35,7 @@ export class AuthController {
 
    @Post('login')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Iniciar sesión' })
+  @ApiOperation({ summary: 'Iniciar sesiÃ³n' })
   @ApiBody({ type: LoginDto })
   @ApiResponse({
     status: 200,
@@ -49,7 +49,7 @@ export class AuthController {
       },
     },
   })
-  @ApiResponse({ status: 401, description: 'Credenciales inválidas' })
+  @ApiResponse({ status: 401, description: 'Credenciales invÃ¡lidas' })
   async login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto);
   }
@@ -66,7 +66,7 @@ export class AuthController {
       example: {
         usuario: {
           id: 1,
-          nombre: 'Juan Pérez',
+          nombre: 'Juan PÃ©rez',
           correo: 'juan.perez@email.com',
           rol: 'bodeguero',
           bodegaId: 'principal',
@@ -86,7 +86,7 @@ export class AuthController {
   @UseGuards(CustomJwtGuard)
   @Get()
   @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ summary: 'Obtener todos los usuarios con paginación' })
+  @ApiOperation({ summary: 'Obtener todos los usuarios con paginaciÃ³n' })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
   @ApiResponse({
@@ -97,7 +97,7 @@ export class AuthController {
         data: [
           {
             id: 1,
-            nombre: 'Juan Pérez',
+            nombre: 'Juan PÃ©rez',
             correo: 'juan.perez@email.com',
             rol: 'bodeguero',
             bodegaId: 'principal',
@@ -113,7 +113,7 @@ export class AuthController {
       },
     },
   })
-  @ApiResponse({ status: 401, description: 'Token inválido' })
+  @ApiResponse({ status: 401, description: 'Token invÃ¡lido' })
   async getAllUsers(
     @Query('page') page: string = '1',
     @Query('limit') limit: string = '10',
@@ -135,7 +135,7 @@ export class AuthController {
     schema: {
       example: {
         id: 5,
-        nombre: 'Juan Pérez Actualizado',
+        nombre: 'Juan PÃ©rez Actualizado',
         correo: 'juan.nuevo@email.com',
         rol: 'admin',
         bodegaId: 'sucursal',
@@ -144,7 +144,7 @@ export class AuthController {
       },
     },
   })
-  @ApiResponse({ status: 401, description: 'Token inválido o usuario no encontrado' })
+  @ApiResponse({ status: 401, description: 'Token invÃ¡lido o usuario no encontrado' })
   async updateUser(
     @Param('id') id: string,
     @Body() updateUserDto: UpdateUserDto,
@@ -165,7 +165,7 @@ export class AuthController {
     schema: {
       example: {
         id: 2,
-        nombre: 'Juan Pérez',
+        nombre: 'Juan PÃ©rez',
         correo: 'juan.perez@email.com',
         rol: 'bodeguero',
         bodegaId: 'principal',
@@ -174,7 +174,7 @@ export class AuthController {
       },
     },
   })
-  @ApiResponse({ status: 401, description: 'Token inválido o usuario no encontrado' })
+  @ApiResponse({ status: 401, description: 'Token invÃ¡lido o usuario no encontrado' })
   async toggleEstado(
     @Param('id') id: string,
     @Body() toggleEstadoDto: ToggleEstadoDto,
@@ -187,15 +187,15 @@ export class AuthController {
   @UseGuards(CustomJwtGuard)
   @Patch(':id/cambiar-contrasena')
   @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ summary: 'Cambiar la contraseña de un usuario' })
+  @ApiOperation({ summary: 'Cambiar la contraseÃ±a de un usuario' })
   @ApiParam({ name: 'id', type: Number, description: 'ID del usuario', example: 2 })
   @ApiResponse({
     status: 200,
-    description: 'Contraseña actualizada exitosamente',
+    description: 'ContraseÃ±a actualizada exitosamente',
     schema: {
       example: {
         id: 2,
-        nombre: 'Juan Pérez',
+        nombre: 'Juan PÃ©rez',
         correo: 'juan.perez@email.com',
         rol: 'bodeguero',
         bodegaId: 'principal',
@@ -204,7 +204,7 @@ export class AuthController {
       },
     },
   })
-  @ApiResponse({ status: 401, description: 'Token inválido o usuario no encontrado' })
+  @ApiResponse({ status: 401, description: 'Token invÃ¡lido o usuario no encontrado' })
   async cambiarContrasena(
     @Param('id') id: string,
     @Body() cambiarContrasenaDto: CambiarContrasenaDto,
@@ -229,7 +229,7 @@ export class AuthController {
       },
     },
   })
-  @ApiResponse({ status: 401, description: 'Token inválido o usuario no encontrado' })
+  @ApiResponse({ status: 401, description: 'Token invÃ¡lido o usuario no encontrado' })
   async deleteUser(
     @Param('id') id: string,
     @CurrentUser() user: Usuario,
@@ -248,7 +248,7 @@ export class AuthController {
     schema: {
       example: {
         id: 1,
-        nombre: 'Juan Pérez',
+        nombre: 'Juan PÃ©rez',
         correo: 'juan.perez@email.com',
         rol: 'bodeguero',
         bodegaId: 'principal',
@@ -256,7 +256,7 @@ export class AuthController {
       },
     },
   })
-  @ApiResponse({ status: 401, description: 'Token inválido' })
+  @ApiResponse({ status: 401, description: 'Token invÃ¡lido' })
   getProfile(@CurrentUser() user: Usuario) {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { contrasena, ...result } = user;
@@ -270,13 +270,13 @@ export class AuthController {
   @ApiOperation({ summary: 'Validar token JWT' })
   @ApiResponse({
     status: 200,
-    description: 'Token válido',
+    description: 'Token vÃ¡lido',
     schema: {
       example: {
         valid: true,
         user: {
           id: 1,
-          nombre: 'Juan Pérez',
+          nombre: 'Juan PÃ©rez',
           correo: 'juan.perez@email.com',
           rol: 'bodeguero',
           bodegaId: 'principal',
@@ -285,7 +285,7 @@ export class AuthController {
       },
     },
   })
-  @ApiResponse({ status: 401, description: 'Token inválido' })
+  @ApiResponse({ status: 401, description: 'Token invÃ¡lido' })
   validateToken(@CurrentUser() user: Usuario) {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { contrasena, ...result } = user;
@@ -313,11 +313,11 @@ export class AuthController {
   //   schema: {
   //     example: {
   //       message: 'Este endpoint solo es accesible para administradores',
-  //       user: 'Juan Pérez',
+  //       user: 'Juan PÃ©rez',
   //     },
   //   },
   // })
-  // @ApiResponse({ status: 401, description: 'Token inválido' })
+  // @ApiResponse({ status: 401, description: 'Token invÃ¡lido' })
   // @ApiResponse({ status: 403, description: 'Sin permisos' })
   // adminOnlyEndpoint(@CurrentUser() user: Usuario) {
   //   return {

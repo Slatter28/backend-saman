@@ -20,7 +20,7 @@ export class CreateClienteDto {
   nombre: string;
 
   @ApiPropertyOptional({
-    description: 'Número de teléfono',
+    description: 'NÃºmero de telÃ©fono',
     example: '+57 300 123 4567',
     maxLength: 20,
   })
@@ -30,7 +30,7 @@ export class CreateClienteDto {
   telefono?: string;
 
   @ApiPropertyOptional({
-    description: 'Correo electrónico',
+    description: 'Correo electrÃ³nico',
     example: 'contacto@empresaabc.com',
     maxLength: 100,
   })
@@ -40,8 +40,8 @@ export class CreateClienteDto {
   email?: string;
 
   @ApiPropertyOptional({
-    description: 'Dirección física',
-    example: 'Calle 123 #45-67, Bogotá',
+    description: 'DirecciÃ³n fÃ­sica',
+    example: 'Calle 123 #45-67, BogotÃ¡',
     maxLength: 255,
   })
   @IsOptional()

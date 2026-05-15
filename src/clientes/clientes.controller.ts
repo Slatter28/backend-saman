@@ -31,7 +31,7 @@ export class ClientesController {
   @UseGuards(CustomJwtGuard)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({
-    summary: 'Obtener lista de clientes con paginación y filtros',
+    summary: 'Obtener lista de clientes con paginaciÃ³n y filtros',
   })
   @ApiResponse({
     status: 200,
@@ -44,7 +44,7 @@ export class ClientesController {
             nombre: 'Empresa ABC S.A.',
             telefono: '+57 300 123 4567',
             email: 'contacto@empresaabc.com',
-            direccion: 'Calle 123 #45-67, Bogotá',
+            direccion: 'Calle 123 #45-67, BogotÃ¡',
             tipo: 'cliente',
             creadoEn: '2024-01-15T10:30:00.000Z',
           },
@@ -80,7 +80,7 @@ export class ClientesController {
         nombre: 'Empresa ABC S.A.',
         telefono: '+57 300 123 4567',
         email: 'contacto@empresaabc.com',
-        direccion: 'Calle 123 #45-67, Bogotá',
+        direccion: 'Calle 123 #45-67, BogotÃ¡',
         tipo: 'cliente',
         creadoEn: '2024-01-15T10:30:00.000Z',
         movimientos: [],
@@ -133,7 +133,7 @@ export class ClientesController {
             },
             usuario: {
               id: 1,
-              nombre: 'Juan Pérez',
+              nombre: 'Juan PÃ©rez',
             },
           },
         ],
@@ -159,13 +159,13 @@ export class ClientesController {
         nombre: 'Empresa ABC S.A.',
         telefono: '+57 300 123 4567',
         email: 'contacto@empresaabc.com',
-        direccion: 'Calle 123 #45-67, Bogotá',
+        direccion: 'Calle 123 #45-67, BogotÃ¡',
         tipo: 'cliente',
         creadoEn: '2024-01-15T10:30:00.000Z',
       },
     },
   })
-  @ApiResponse({ status: 400, description: 'Datos inválidos' })
+  @ApiResponse({ status: 400, description: 'Datos invÃ¡lidos' })
   @ApiResponse({ status: 401, description: 'No autorizado' })
   @ApiResponse({ status: 409, description: 'Cliente con este email ya existe' })
   create(@Body() createClienteDto: CreateClienteDto) {
@@ -190,13 +190,13 @@ export class ClientesController {
         nombre: 'Empresa ABC S.A. Actualizada',
         telefono: '+57 300 123 4567',
         email: 'contacto@empresaabc.com',
-        direccion: 'Calle 123 #45-67, Bogotá',
+        direccion: 'Calle 123 #45-67, BogotÃ¡',
         tipo: 'cliente',
         creadoEn: '2024-01-15T10:30:00.000Z',
       },
     },
   })
-  @ApiResponse({ status: 400, description: 'Datos inválidos' })
+  @ApiResponse({ status: 400, description: 'Datos invÃ¡lidos' })
   @ApiResponse({ status: 401, description: 'No autorizado' })
   @ApiResponse({ status: 404, description: 'Cliente no encontrado' })
   @ApiResponse({ status: 409, description: 'Cliente con este email ya existe' })

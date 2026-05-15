@@ -13,7 +13,7 @@ export class CreateBodegaDto {
   nombre: string;
 
   @ApiPropertyOptional({
-    description: 'Ubicación física de la bodega',
+    description: 'UbicaciÃ³n fÃ­sica de la bodega',
     example: 'Primer piso, Sector A',
     maxLength: 255,
   })

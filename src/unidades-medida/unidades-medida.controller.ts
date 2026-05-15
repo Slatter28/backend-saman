@@ -35,7 +35,7 @@ export class UnidadesMedidaController {
   @UseGuards(CustomJwtGuard)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({
-    summary: 'Obtener lista de unidades de medida con paginación y filtros ',
+    summary: 'Obtener lista de unidades de medida con paginaciÃ³n y filtros ',
   })
   @ApiResponse({
     status: 200,
@@ -108,7 +108,7 @@ export class UnidadesMedidaController {
       },
     },
   })
-  @ApiResponse({ status: 400, description: 'Datos inválidos' })
+  @ApiResponse({ status: 400, description: 'Datos invÃ¡lidos' })
   @ApiResponse({ status: 401, description: 'No autorizado' })
   @ApiResponse({
     status: 409,
@@ -138,7 +138,7 @@ export class UnidadesMedidaController {
       },
     },
   })
-  @ApiResponse({ status: 400, description: 'Datos inválidos' })
+  @ApiResponse({ status: 400, description: 'Datos invÃ¡lidos' })
   @ApiResponse({ status: 401, description: 'No autorizado' })
   @ApiResponse({ status: 404, description: 'Unidad de medida no encontrada' })
   @ApiResponse({

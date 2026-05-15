@@ -29,7 +29,7 @@ export class ProductosController {
   @Get()
   @UseGuards(CustomJwtGuard)
   @ApiOperation({
-    summary: 'Obtener lista de productos con paginación y filtros ',
+    summary: 'Obtener lista de productos con paginaciÃ³n y filtros ',
   })
   @ApiBearerAuth('JWT-auth')
   @ApiResponse({
@@ -115,11 +115,11 @@ export class ProductosController {
       },
     },
   })
-  @ApiResponse({ status: 400, description: 'Datos inválidos' })
+  @ApiResponse({ status: 400, description: 'Datos invÃ¡lidos' })
   @ApiResponse({ status: 401, description: 'No autorizado' })
   @ApiResponse({
     status: 409,
-    description: 'Producto con este código ya existe',
+    description: 'Producto con este cÃ³digo ya existe',
   })
   create(@Body() createProductoDto: CreateProductoDto) {
     return this.productosService.create(createProductoDto);
@@ -151,12 +151,12 @@ export class ProductosController {
       },
     },
   })
-  @ApiResponse({ status: 400, description: 'Datos inválidos' })
+  @ApiResponse({ status: 400, description: 'Datos invÃ¡lidos' })
   @ApiResponse({ status: 401, description: 'No autorizado' })
   @ApiResponse({ status: 404, description: 'Producto no encontrado' })
   @ApiResponse({
     status: 409,
-    description: 'Producto con este código ya existe',
+    description: 'Producto con este cÃ³digo ya existe',
   })
   update(
     @Param('id', ParseIntPipe) id: number,
@@ -187,10 +187,10 @@ export class ProductosController {
   @Get('next/codigo')
   @UseGuards(CustomJwtGuard)
   @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ summary: 'Obtener el siguiente código de producto disponible' })
+  @ApiOperation({ summary: 'Obtener el siguiente cÃ³digo de producto disponible' })
   @ApiResponse({
     status: 200,
-    description: 'Siguiente código obtenido exitosamente',
+    description: 'Siguiente cÃ³digo obtenido exitosamente',
     schema: {
       example: {
         nextCodigo: 'PROD-006',
