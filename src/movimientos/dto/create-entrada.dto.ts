@@ -6,6 +6,7 @@ import {
   IsString,
   MaxLength,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateEntradaDto {
@@ -32,6 +33,7 @@ export class CreateEntradaDto {
     example: 10,
   })
   @IsNotEmpty()
+  @Type(() => Number)
   @IsNumber()
   @IsPositive()
   cantidad: number;
